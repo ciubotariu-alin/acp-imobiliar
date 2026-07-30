@@ -17,7 +17,9 @@
 - Corecția anunț→tranzacție: interval implicit **4–8%** (0.04–0.08), aplicat global la verdict.
 - Stil PDF: paletă bleumarin `#1b2a4a` + crem `#f5efe0`, ca documentul de referință.
 - Disclaimer fix pe fiecare raport: „Document confidențial • Estimare analitică, nu evaluare autorizată ANEVAR".
-- Fiecare task se termină cu commit; mesaje de commit în limba engleză, prefix `feat:`/`test:`/`chore:`.
+- Fiecare task se termină cu commit; mesaj cu prefix `feat:`/`test:`/`chore:`/`docs:`. Textul poate
+  fi în engleză și poate conține termeni românești de domeniu (ex. „modele", „filtrare") — folosește
+  mesajele din task-uri ca atare.
 
 ---
 
