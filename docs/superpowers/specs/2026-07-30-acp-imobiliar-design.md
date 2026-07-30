@@ -113,9 +113,15 @@ suprafață apropiată, tip apartament, fereastră de vechime.
 3. **Chirii comparabile** → unghiul de randament (buy-to-let).
 4. **Context** ad-hoc (rapoarte de piață, note cartier/transport).
 
-**Portaluri (set inițial, extensibil):**
-`imobiliare.ro, storia.ro, olx.ro, publi24.ro, romimo.ro, sudrezidential.ro, lajumate.ro,
-waa2.com, anuntul.ro` + directproprietar/agenții unde apar.
+**Portaluri (toate incluse de la lansare, arhitectură extensibilă pentru altele):**
+
+Mari (anti-bot → browser politicos + fallback agent):
+`imobiliare.ro, storia.ro, olx.ro`
+
+Secundare / de nișă (de obicei fetch simplu):
+`publi24.ro, romimo.ro, sudrezidential.ro, lajumate.ro, waa2.com, anuntul.ro`
+
+Ad-hoc, unde apar comparabile în zonă: `directproprietar.ro` + site-uri de agenții (ex. Elixir, VIB).
 
 **Așteptare onestă:** scopul e *acoperire bună*, nu *garantată exhaustivă*. Raportul listează mereu
 sursele efectiv consultate la acea rulare.
@@ -199,10 +205,16 @@ Locație: `~/OwnDevelopment/acp-imobiliar/`.
 acp-imobiliar/
 ├─ SKILL.md                 # instrucțiunile agentului (persona 20 ani + pașii pipeline)
 ├─ connectors/              # câte un scraper pe portal, aceeași interfață
-│   ├─ imobiliare.py
+│   ├─ imobiliare.py        # mari (browser politicos)
 │   ├─ storia.py
 │   ├─ olx.py
-│   └─ …                    # extensibil
+│   ├─ publi24.py           # secundare (fetch simplu)
+│   ├─ romimo.py
+│   ├─ sudrezidential.py
+│   ├─ lajumate.py
+│   ├─ waa2.py
+│   ├─ anuntul.py
+│   └─ …                    # extensibil (directproprietar, agenții)
 ├─ core/
 │   ├─ subiect.py           # extragere/normalizare fișă subiect
 │   ├─ filtrare.py          # comparabilitate + deduplicare + outlieri
@@ -244,5 +256,6 @@ alegere comparabile + verdict = treaba agentului.
 - Pentru un link/subiect dat + N zile, produce un PDF în stilul de referință cu: fișă, tabel
   comparabile real strânse, statistici €/mp, verdict, plan pe N zile, profiluri, text anunț.
 - Calculul €/mp și statisticile au teste care trec.
-- Cel puțin 3 connectori funcționali la lansare, arhitectură extensibilă pentru restul.
+- Toate portalurile din listă au connector la lansare (mari + secundare); arhitectură extensibilă
+  pentru altele. Un connector căzut nu blochează restul, iar raportul declară sursele efectiv folosite.
 - Raportul declară mereu sursele consultate și disclaimerele.
