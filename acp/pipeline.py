@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from acp.modele import Subiect, CriteriiCautare, Comparabila, Analiza
-from acp.connectors.base import Connector
+from acp.connectors.base import ConnectorBase
 from acp.analiza import analizeaza
 from acp.raport.render import scrie_pdf
 
@@ -20,16 +20,16 @@ def criterii_din_subiect(subiect: Subiect, prag_supr: float = 0.20,
     )
 
 
-def ruleaza(subiect: Subiect, connectori: list[Connector], tinta_zile: int,
+def ruleaza(subiect: Subiect, connectori: list[ConnectorBase], tinta_zile: int,
             cale_pdf: str, narativ: dict | None = None) -> Analiza:
     criterii = criterii_din_subiect(subiect)
     comparabile: list[Comparabila] = []
     for conn in connectori:
         try:
-            gasite = conn.cauta(criterii)
+            gasite = conn.search(criterii)
             comparabile.extend(gasite)
         except Exception as e:  # un connector căzut nu blochează restul
-            print(f"[avertisment] connectorul '{getattr(conn, 'nume', '?')}' a eșuat: {e}")
+            print(f"[avertisment] connectorul '{getattr(conn, 'name', '?')}' a eșuat: {e}")
     # `surse` nu se mai suprapune peste conn.nume: analizeaza() derivă lista de
     # portaluri direct din câmpul `sursa` al fiecărei comparabile găsite, ceea ce
     # reflectă corect proveniența datelor chiar și atunci când un singur connector
