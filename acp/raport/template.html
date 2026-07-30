@@ -61,6 +61,23 @@
     </tr>
     {% endfor %}
   </table>
+
+  {% if analiza.outlieri %}
+  <p class="nota"><strong>Comparabile excluse din mediană (preț atipic):</strong></p>
+  <table>
+    <tr><th>Sursă</th><th>Supr.</th><th>Preț</th><th>€/mp</th></tr>
+    {% for c in analiza.outlieri %}
+    <tr>
+      <td>{{ c.sursa }}{% if c.marcaj != "activ" %} ({{ c.marcaj }}){% endif %}</td>
+      <td>{{ c.supr_totala }} mp</td>
+      <td>{% if c.pret_eur %}{{ eur(c.pret_eur) }}{% else %}listat{% endif %}</td>
+      <td>{% if c.euro_mp %}{{ "%.0f"|format(c.euro_mp) }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="nota">Excluse din mediană (preț atipic) — nu au fost folosite în calculul statisticilor de mai jos.</p>
+  {% endif %}
+
   <p>Mediană €/mp ajustat: <strong>{{ "%.0f"|format(analiza.stat_ajustat.mediana) }} €/mp</strong>
      (min {{ "%.0f"|format(analiza.stat_ajustat.minim) }} – max {{ "%.0f"|format(analiza.stat_ajustat.maxim) }}, n={{ analiza.stat_ajustat.n }}).
      Poziționare subiect: <strong>{{ "%+.1f"|format(analiza.pozitionare_pct) }}%</strong> față de mediană → <strong>{{ analiza.incadrare }}</strong>.</p>

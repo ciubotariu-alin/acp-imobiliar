@@ -53,3 +53,24 @@ def test_verdict_foloseste_mediana_ajustata_nu_bruta():
     # poziționarea trebuie calculată față de mediana AJUSTATĂ, nu față de cea brută
     asteptat = (subiect.euro_mp - a.stat_ajustat.mediana) / a.stat_ajustat.mediana * 100
     assert a.pozitionare_pct == pytest.approx(asteptat)
+
+
+def _comps_cu_outlier():
+    """Cinci comparabile în jur de 1300 €/mp și una clar atipică (300 €/mp),
+    suficiente (n=6 cu preț) pentru ca regula IQR să marcheze outlierul."""
+    date = [(85000, 65, 2008), (87000, 79, 2009), (89000, 65, 2009),
+            (82900, 65, 2009), (86000, 65, 2010)]
+    comps = [Comparabila(sursa="s", pret_eur=p, supr_totala=s, an=a) for p, s, a in date]
+    outlier = Comparabila(sursa="s", pret_eur=19500, supr_totala=65, an=2009)  # 300 €/mp
+    return comps, outlier
+
+
+def test_outlierii_sunt_expusi_dar_excluse_din_mediana():
+    subiect = _subiect()
+    comps, outlier = _comps_cu_outlier()
+    a = analizeaza(subiect, comps + [outlier], tinta_zile=90)
+
+    assert outlier in a.outlieri
+    assert outlier not in a.comparabile
+    # outlierul (300 €/mp) nu a tras mediana/minimul în jos
+    assert a.stat_ajustat.minim > 300

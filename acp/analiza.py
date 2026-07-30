@@ -16,12 +16,12 @@ def _incadrare(pozitionare_pct: float) -> str:
 
 
 def analizeaza(subiect: Subiect, comparabile: list[Comparabila], tinta_zile: int,
-               chirii: list[Comparabila] | None = None,
                corectie: tuple[float, float] = (0.04, 0.08),
                surse: list[str] | None = None) -> Analiza:
+    # randament din chirii: Plan 3
     vanzari = [c for c in comparabile if c.tip == "vanzare"]
     filtrate = filtreaza(subiect, dedup(vanzari))
-    pastrate, _outlieri = marcheaza_outlieri(filtrate)
+    pastrate, outlieri = marcheaza_outlieri(filtrate)
 
     valori_brut = [c.euro_mp for c in pastrate if c.euro_mp is not None]
     valori_ajustat = [c.euro_mp_ajustat for c in pastrate if c.euro_mp_ajustat is not None]
@@ -44,6 +44,7 @@ def analizeaza(subiect: Subiect, comparabile: list[Comparabila], tinta_zile: int
     return Analiza(
         subiect=subiect,
         comparabile=pastrate,
+        outlieri=outlieri,
         context=context,
         stat_brut=stat_brut,
         stat_ajustat=stat_ajustat,

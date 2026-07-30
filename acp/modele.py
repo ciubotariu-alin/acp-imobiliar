@@ -99,6 +99,7 @@ class ContextPiata(BaseModel):
 class Analiza(BaseModel):
     subiect: Subiect
     comparabile: list[Comparabila]
+    outlieri: list[Comparabila] = []
     context: ContextPiata
     stat_brut: Statistici
     stat_ajustat: Statistici
