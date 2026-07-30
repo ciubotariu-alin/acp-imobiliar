@@ -144,13 +144,50 @@ cu notă (transparență).
 **Calcule (determinist, testabil):**
 - €/mp per comparabilă (pe suprafață **totală** declarată; util-ul notat separat).
 - €/mp subiect.
-- Statistici: nr. comparabile, **min / mediană / max**, eventual quartile.
+- Statistici: nr. comparabile, **min / mediană / max**, eventual quartile — pe €/mp **ajustat**.
 - Poziționarea subiectului față de mediană („+X% peste mediană").
 
-**Ajustări (judecată agent + reguli):** etaj, an, stare/finisaje, mobilat vs. gol, parcare inclusă
-(ex. „parcare inclusă = +2–4k"). Ajustările sunt explicate, nu din burtă.
+### Ajustări (recalibrate de agent per raport)
 
-**Verdict de poziționare** (combinând statistici + ajustări + **ținta de zile**):
+**Mecanism:** fiecare comparabilă e normalizată spre subiect — se ajustează prețul comparabilei ca
+și cum ar avea aceleași caracteristici ca proprietatea subiect. Statistica se calculează pe €/mp
+*ajustat*.
+
+```
+preț ajustat comp = preț comp × (1 + Σ ajustări pentru diferențele față de subiect)
+```
+
+**Model hibrid:** tabelul de mai jos e baza/guardrail; **agentul „20 ani" recalibrează valorile
+per raport** pe baza evidenței din datele locale (ex. cât valorează efectiv parcarea în zona
+respectivă), și **explică fiecare ajustare** în raport (cifră + motiv, nu „din burtă"). Fiecare
+ajustare e vizibilă și contestabilă.
+
+| Factor | Regulă | Magnitudine tipică (start) |
+|---|---|---|
+| Stare/finisaje | necesită renovare vs. renovat | −10…−20% (≈ cost renovare) |
+| Mobilat + utilat | complet vs. gol | +3…+7% (≈ 3–6k) |
+| Parcare | loc deținut inclus | +8.000…+15.000 € (premium); +2…5k în ansamblu de graniță |
+| Etaj | parter −5…−8%; ultimul −2…−4% (dacă nu penthouse); etaj înalt cu lift+lumină +1…+3% | |
+| An / vechime | mai nou = premium | ±3…5% / deceniu (≈0 în același ansamblu) |
+| Suprafață | unități mari au €/mp mai mic | ponderare mai mare pentru mp apropiat; corecție de gradient dacă diferă mult |
+| Compartimentare | decomandat vs. semidecomandat | +1…+3% |
+| Balcon / terasă | terasă mare / balcon generos | +1…+3% |
+| Tip vânzător / comision | agenție cu comision cumpărător vs. „comision 0%" | ajustare la preț efectiv |
+| Anunț→tranzacție | preț cerut → preț închidere | −4…−8% (aplicat global la final) |
+
+### Context de piață (ofertă & tensiune)
+
+Indicator care **nu ajustează comparabilele**, ci calibrează strategia și verdictul:
+- **Nr. comparabile active** în zonă la data analizei (oferta curentă) — mereu, derivat din Etapa 3.
+- Când portalul oferă: **timp mediu pe piață** (days on market), **câte au deja reduceri de preț**,
+  **ritmul de anunțuri noi** — semnale de tensiune.
+- Derivat: încadrare **„piața cumpărătorului / echilibrată / a vânzătorului"**.
+
+Efect: ofertă mare → presiune în jos, start aproape de mediană, reduceri mai dese pe ținta de zile;
+ofertă mică → testezi plafonul mai mult, reduceri mai lente. Intră direct în calibrarea planului pe
+faze (Etapa 6).
+
+**Verdict de poziționare** (combinând statistici ajustate + context de piață + **ținta de zile**):
 - interval **preț de listare** recomandat;
 - interval realist **preț de tranzacționare** (cu corecția anunț→tranzacție);
 - încadrare: „sub piață / corect / supraevaluat".
@@ -165,7 +202,8 @@ Intrare: fișă + comparabile + analiză + ținta de zile. Produce:
 2. **„De ce N zile schimbă strategia"** — registru calibrat pe N (≤45 zile: sub mediană din start;
    ~90 zile: testezi plafonul, cobori în trepte). Nu copiază orb „90 zile".
 3. **Plan de preț eșalonat** — N împărțit în faze (ex. 3×30), fiecare cu preț de listare, obiectiv,
-   prag de decizie (nr. vizionări/oferte); reducerile ca mărime/ritm derivă din poziționare;
+   prag de decizie (nr. vizionări/oferte); reducerile ca mărime/ritm derivă din poziționare **și din
+   contextul de piață** (ofertă mare → reduceri mai dese/agresive; ofertă mică → mai lente);
    fiecare reducere = „relansare".
 4. **Profiluri de cumpărător** pe faze (premium „gata de mutare" → investitor randament → familie/
    navetist sensibil la preț) + „cine NU e clientul".
@@ -185,8 +223,9 @@ Elemente:
 - Antet/subsol pe fiecare pagină (titlu ACP, identificare proprietate, „Document confidențial •
   Estimare analitică, nu evaluare autorizată ANEVAR", nr. pagină).
 - Fișa proprietății (tabel 2 coloane cheie/valoare).
+- Bloc **Context de piață** (nr. comparabile active, tensiune ofertă, days-on-market dacă există).
 - Tabel comparabile (rând „Subiect" evidențiat; coloane: comparabilă, supr., etaj, an,
-  dotări/parcare, preț, €/mp; note pentru „listat"/outlier).
+  dotări/parcare, preț, €/mp brut și **ajustat**; note pentru ajustare/„listat"/outlier).
 - Casete evidențiate (fundal crem, bordură) pentru recomandări/concluzii.
 - Tabel plan pe faze (fază, zile, preț, obiectiv, prag).
 - Blocuri profiluri cumpărători (etichete Faza 1/2/3).
