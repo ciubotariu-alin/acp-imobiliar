@@ -1,0 +1,8 @@
+[
+  {"sursa": "storia", "pret_eur": 85000, "supr_totala": 65, "etaj": 10, "an": 2008, "dotari": ["dressing", "A/C"], "marcaj": "activ", "tip": "vanzare"},
+  {"sursa": "publi24", "pret_eur": 87000, "supr_totala": 79, "etaj": 7, "an": 2009, "dotari": ["terasă"], "marcaj": "activ", "tip": "vanzare"},
+  {"sursa": "olx", "pret_eur": 89000, "supr_totala": 65, "etaj": 3, "an": 2009, "dotari": ["parcare"], "marcaj": "activ", "tip": "vanzare"},
+  {"sursa": "olx", "pret_eur": 82900, "supr_totala": 65, "etaj": 5, "an": 2009, "dotari": [], "marcaj": "activ", "tip": "vanzare"},
+  {"sursa": "sudrezidential", "pret_eur": null, "supr_totala": 65, "etaj": 10, "an": 2008, "dotari": ["mobilat"], "marcaj": "vandut", "tip": "vanzare"},
+  {"sursa": "olx", "pret_eur": 500, "supr_totala": 65, "etaj": 4, "an": 2009, "dotari": [], "marcaj": "activ", "tip": "chirie"}
+]
