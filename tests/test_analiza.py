@@ -1,5 +1,5 @@
 import pytest
-from acp.modele import Subiect, Comparabila
+from acp.modele import Subiect, Comparabila, Ajustare
 from acp.analiza import analizeaza
 
 
@@ -26,4 +26,30 @@ def test_analiza_produce_verdict():
 def test_pozitionare_peste_mediana():
     # subiect 1318 €/mp; comparabile în jur de 1300 → ușor peste
     a = analizeaza(_subiect(), _comps(), tinta_zile=90)
-    assert isinstance(a.pozitionare_pct, float)
+    assert a.pozitionare_pct > 0
+
+
+def _comps_cu_ajustare():
+    """Comparabile la care una are o ajustare semnificativă (fără parcare, spre
+    deosebire de subiect), astfel încât mediana ajustată să difere clar de cea brută."""
+    date = [(85000, 65, 2008), (89000, 65, 2009), (82900, 65, 2009), (87000, 65, 2010)]
+    comps = [Comparabila(sursa="s", pret_eur=p, supr_totala=s, an=a) for p, s, a in date]
+    # a doua comparabilă (89000 €, 65 mp → ~1369 €/mp) primește o ajustare negativă
+    # mare (lipsă parcare), care îi scade €/mp ajustat sub restul grupului.
+    comps[1] = comps[1].model_copy(update={
+        "ajustari": [Ajustare(factor="parcare", procent=-0.15, motiv="fără parcare, spre deosebire de subiect")]
+    })
+    return comps
+
+
+def test_verdict_foloseste_mediana_ajustata_nu_bruta():
+    subiect = _subiect()
+    comps = _comps_cu_ajustare()
+    a = analizeaza(subiect, comps, tinta_zile=90)
+
+    # ajustarea trebuie să schimbe efectiv mediana folosită pentru verdict
+    assert a.stat_ajustat.mediana != a.stat_brut.mediana
+
+    # poziționarea trebuie calculată față de mediana AJUSTATĂ, nu față de cea brută
+    asteptat = (subiect.euro_mp - a.stat_ajustat.mediana) / a.stat_ajustat.mediana * 100
+    assert a.pozitionare_pct == pytest.approx(asteptat)
