@@ -37,8 +37,10 @@ USER_AGENT = (
 DEFAULT_TIMEOUT_MS = 30_000
 MIN_DELAY_SECONDS = 2.0
 MAX_RETRIES = 3
+SEARCH_TIMEOUT_SECONDS = 30
 
 _FLOOR_RE = re.compile(r"etaj\s+(\d+)", re.IGNORECASE)
+_FLOOR_PARTER_RE = re.compile(r"\bparter\b", re.IGNORECASE)
 
 
 class ImobiliareTransientError(ConnectorError):
@@ -76,9 +78,18 @@ class ImobiliareConnector(ConnectorBase):
                 cu celelalte surse.
         """
         try:
-            return asyncio.run(self._search_async(criterii))
+            return asyncio.run(
+                asyncio.wait_for(self._search_async(criterii), timeout=SEARCH_TIMEOUT_SECONDS)
+            )
         except ConnectorError:
             raise
+        except asyncio.TimeoutError as e:
+            # Constrângere din spec: ≤30s per portal, indiferent de câte
+            # retry-uri tenacity ar mai fi rămas de făcut la mijlocul lor.
+            raise ConnectorError(
+                f"imobiliare.ro search a depășit timeout-ul de {SEARCH_TIMEOUT_SECONDS}s",
+                connector=self.name,
+            ) from e
         except Exception as e:  # plasă de siguranță — nu lăsăm nimic necontrolat să scape
             raise ConnectorError(f"imobiliare.ro search failed: {e}", connector=self.name) from e
 
@@ -272,6 +283,8 @@ class ImobiliareConnector(ConnectorBase):
             m = _FLOOR_RE.search(text)
             if m:
                 return int(m.group(1))
+            if _FLOOR_PARTER_RE.search(text):
+                return 0
         return None
 
     def _extract_url(self, elem: Tag) -> str | None:
