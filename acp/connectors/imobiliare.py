@@ -87,13 +87,7 @@ class ImobiliareConnector(ConnectorBase):
     async def _search_async(self, criterii: CriteriiCautare) -> list[Comparabila]:
         """Construiește URL-ul, navighează (cu retry) și parsează rezultatele."""
         url = self._build_search_url(criterii)
-
-        try:
-            html = await self._fetch_html_with_retry(url)
-        except ConnectorError:
-            raise
-        except (TimeoutError, asyncio.TimeoutError) as e:
-            raise ConnectorError(f"imobiliare.ro timeout la {url}: {e}", connector=self.name) from e
+        html = await self._fetch_html_with_retry(url)
 
         soup = BeautifulSoup(html, "html.parser")
         listing_elems = soup.select("article[data-listing-id]")
@@ -239,7 +233,8 @@ class ImobiliareConnector(ConnectorBase):
         etaj = self._extract_etaj(elem)
 
         status = (elem.get("data-status") or "").lower()
-        tip = "inchiriere" if "rent" in status else "vanzare"
+        # Vocabularul intern (Comparabila.tip) e "vanzare" | "chirie" — vezi acp.modele.
+        tip = "chirie" if "rent" in status else "vanzare"
 
         availability = (elem.get("data-availability") or "available").lower()
         marcaj = "activ" if availability in ("available", "") else "listat"

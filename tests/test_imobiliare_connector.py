@@ -110,6 +110,19 @@ def test_imobiliare_parse_listing_accepta_string_html():
     assert comp.url == "https://www.imobiliare.ro/oferta/test-1"
 
 
+def test_imobiliare_parse_listing_status_rent_mapează_la_chirie():
+    """Comparabila.tip trebuie să folosească vocabularul modelului: 'vanzare' | 'chirie'."""
+    connector = ImobiliareConnector()
+    html = (
+        '<article data-listing-id="3" data-item-price="500" data-surface="45" '
+        'data-year="2018" data-status="rent" data-availability="available">'
+        '<a href="/oferta/test-3">x</a>'
+        "</article>"
+    )
+    comp = connector._normalize_listing_to_comparabila(html)
+    assert comp.tip == "chirie"
+
+
 def test_imobiliare_parse_listing_fara_suprafata_returnează_none():
     """Un articol fără data-surface nu poate fi convertit -> None (skip, nu crash)."""
     connector = ImobiliareConnector()
