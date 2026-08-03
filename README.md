@@ -1,31 +1,89 @@
-# ACP Imobiliar
+# ACP Imobiliar — Analiză Comparativă de Piață
 
-Pipeline de Analiză Comparativă de Piață pentru anunțuri imobiliare (uz personal).
+Automatism pentru generare rapoarte ACP în format PDF, cu conectori la 9 portaluri imobiliare.
 
-## Instalare
+## Setup
+
 ```bash
+cd ~/OwnDevelopment/acp-imobiliar
 uv sync --extra dev
-# macOS, pentru WeasyPrint:
+
+# macOS: WeasyPrint necesită dependențe sistem
 brew install pango gdk-pixbuf libffi
 ```
 
-## Rulează demo-ul
+## Usage (Semi-Asistat)
+
+1. Deschizi proiectul în Claude Code / Chat
+2. Dai comanda cu link (sau date manuale) + ținta de zile
+3. Agent: extrage fișă → caută pe portaluri → filtrează → arată verdict
+4. Tu: confirmi / ajustezi
+5. Agent: scrie narativul + generează PDF în `output/`
+
+### Demo
+
 ```bash
+cd ~/OwnDevelopment/acp-imobiliar
 DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run python exemple/demo.py
 # → output/ACP_ConfortCity_90zile.pdf
 ```
 
-## Teste
+## Architecture
+
+```
+[0] INPUT (agent + data manual)
+  ↓
+[1] FIȘA SUBIECTULUI (extract/normalize)
+  ↓
+[2] LOCALIZARE (zone normalization)
+  ↓
+[3] CONECTORI (9 portaluri paralel: 3 Playwright + 6 fetch)
+  ↓
+[4] FILTRARE & DEDUP (outliers, cross-portal)
+  ↓
+[5] ANALIZĂ (€/mp, statistici, poziționare)
+  ↓
+[6] NARATIV (agent: 20 de ani, strategie N zile, text anunț)
+  ↓
+[7] RANDARE PDF (HTML → PDF, bleumarin/crem)
+```
+
+### Proiect Structură
+
+- `acp/modele.py` — modele de date (Property, Market, Listing)
+- `acp/statistica.py`, `acp/filtrare.py`, `acp/context.py`, `acp/analiza.py` — nucleu determinist
+- `acp/connectors/` — 9 conectori: 3 Playwright (imobiliare.ro, storia.ro, olx.ro) + 6 Fetch (publi24.ro, romimo.ro, sudrezidential.ro, lajumate.ro, waa2.com, anuntul.ro)
+- `acp/raport/` — template HTML + randare PDF (WeasyPrint)
+- `acp/pipeline.py` — PipelineOrchestrator: orchestrare end-to-end [0]-[7]
+- `SKILL.md` — instrucțiunile agentului (persona 20 ani)
+
+## Tests
+
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run pytest -v
+# Full suite
+DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run pytest tests/ -v
+
+# Specific module
+DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run pytest tests/test_e2e.py -v
+DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run pytest tests/test_pipeline.py -v
 ```
 
 **Notă pe macOS:** WeasyPrint are nevoie de `DYLD_LIBRARY_PATH=/opt/homebrew/lib` la rulare (după `brew install pango gdk-pixbuf libffi`).
 
-## Structură
-- `acp/modele.py` — modele de date
-- `acp/statistica.py`, `acp/filtrare.py`, `acp/context.py`, `acp/analiza.py` — nucleu determinist
-- `acp/connectors/` — surse de comparabile (fixture acum; portaluri reale în Planul 2)
-- `acp/raport/` — template HTML + randare PDF
-- `acp/pipeline.py` — orchestrare end-to-end
-- `SKILL.md` — instrucțiunile agentului (persona 20 ani)
+## Conectori Status
+
+| Portal | Status | Type | Notes |
+|--------|--------|------|-------|
+| imobiliare.ro | Implemented | Playwright | Anti-bot detection |
+| storia.ro | Implemented | Playwright | Anti-bot detection |
+| olx.ro | Implemented | Playwright | Dynamic rendering |
+| publi24.ro | Implemented | Fetch | Simple HTTP |
+| romimo.ro | Implemented | Fetch | Simple HTTP |
+| sudrezidential.ro | Implemented | Fetch | Simple HTTP |
+| lajumate.ro | Implemented | Fetch | Simple HTTP |
+| waa2.com | Implemented | Fetch | Simple HTTP |
+| anuntul.ro | Implemented | Fetch | Simple HTTP |
+
+## Disclaimer
+
+Document confidențial. Estimare analitică, **nu evaluare autorizată ANEVAR**. Conform ORDIN 53/2023, rapoartele ACP generate de acest instrument sunt auxiliare și nu înlocuiesc evaluarea profesională.
