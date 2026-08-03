@@ -71,6 +71,23 @@ _FLOOR_MAP = {
     "TENTH": 10,
 }
 
+# Mapare enum textual storia.ro -> număr de camere. Câmpul JSON `roomsNumber`
+# (ex. "ONE", "TWO", "THREE", ...) nu poate fi filtrat fiabil din URL (vezi
+# nota din `_build_search_url`), așa că filtrarea se face determinist după
+# parsare, în `_search_async` — la fel ca la `supr_min`/`supr_max`.
+_ROOMS_MAP = {
+    "ONE": 1,
+    "TWO": 2,
+    "THREE": 3,
+    "FOUR": 4,
+    "FIVE": 5,
+    "SIX": 6,
+    "SEVEN": 7,
+    "EIGHT": 8,
+    "NINE": 9,
+    "TEN": 10,
+}
+
 
 class StoriaTransientError(ConnectorError):
     """Eroare tranzitorie (timeout, 5xx) — poate fi reîncercată cu tenacity."""
@@ -149,6 +166,9 @@ class StoriaConnector(ConnectorBase):
                 continue
             if comp.supr_totala < criterii.supr_min or comp.supr_totala > criterii.supr_max:
                 continue
+            item_dict = self._as_item_dict(item)
+            if item_dict is None or self._extract_camere(item_dict) != criterii.camere:
+                continue
             comparabile.append(comp)
         return comparabile
 
@@ -222,8 +242,9 @@ class StoriaConnector(ConnectorBase):
         număr de camere (parametrii încercați empiric — ``roomsNumber``,
         ``roomsNumber[list][0]``, ``roomsNumber[0]`` — sunt ignorați silențios
         de server). La fel ca la imobiliare.ro, filtrarea după suprafață
-        (supr_min/supr_max) se face determinist după parsare, în
-        `_search_async`, indiferent de comportamentul filtrelor din URL.
+        (supr_min/supr_max) și după număr de camere (`criterii.camere`, via
+        `_extract_camere`/`roomsNumber`) se face determinist după parsare,
+        în `_search_async`, indiferent de comportamentul filtrelor din URL.
         """
         tip_segment = "vanzare" if criterii.tip == "vanzare" else "inchiriere"
         segments = ["ro", "rezultate", tip_segment, "apartament", "bucuresti"]
@@ -326,6 +347,15 @@ class StoriaConnector(ConnectorBase):
             marcaj="activ",
             tip=tip,
         )
+
+    @staticmethod
+    def _extract_camere(item: dict) -> int | None:
+        """
+        Mapează enum-ul textual `roomsNumber` (ex. "ONE", "TWO", "THREE", ...)
+        la un număr întreg de camere, folosind `_ROOMS_MAP`. Valoare
+        necunoscută/lipsă -> None (nu se potrivește cu niciun `criterii.camere`).
+        """
+        return _ROOMS_MAP.get(item.get("roomsNumber"))
 
     @staticmethod
     def _as_item_dict(listing: dict | str) -> dict | None:

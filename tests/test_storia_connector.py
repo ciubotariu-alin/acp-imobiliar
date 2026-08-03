@@ -250,6 +250,41 @@ def test_storia_search_filtrează_după_suprafață(storia_html, monkeypatch):
         assert comp.sursa == "storia.ro"
 
 
+def test_search_filters_by_camere(storia_html, listing_items, monkeypatch):
+    """criterii.camere trebuie aplicat ca filtru post-parsare (roomsNumber),
+    la fel ca supr_min/supr_max — vezi contractul din acp/filtrare.py:13
+    ("Filtrarea pe număr de camere ... se face deja de connector")."""
+    connector = StoriaConnector()
+
+    async def fake_fetch(url):
+        return storia_html
+
+    monkeypatch.setattr(connector, "_fetch_html_with_retry", fake_fetch)
+
+    # supr_min/supr_max largi, ca să izolăm efectul filtrului de camere.
+    criterii = criterii_test(camere=2, supr_min=0, supr_max=1000, zona="Sectorul 3")
+    result = connector.search(criterii)
+
+    assert isinstance(result, list)
+    assert len(result) > 0
+
+    # Comparabila nu expune direct `camere`, deci reconstituim roomsNumber
+    # din fixtură prin slug (extras din URL-ul anunțului) și verificăm că
+    # se mapează la exact 2 camere.
+    slug_to_rooms = {
+        item.get("slug"): item.get("roomsNumber") for item in listing_items if item.get("slug")
+    }
+    for comp in result:
+        assert comp.url is not None
+        slug = comp.url.rsplit("/", 1)[-1]
+        assert StoriaConnector._extract_camere({"roomsNumber": slug_to_rooms[slug]}) == 2
+
+    # Proba că filtrarea chiar exclude anunțuri: fixtura conține și anunțuri
+    # cu alt număr de camere (ex. THREE, ONE) — dacă filtrul ar fi ignorat
+    # silențios, rezultatul ar include toată fixtura.
+    assert len(result) < len(listing_items)
+
+
 def test_storia_search_gol_dacă_niciun_anunț_nu_se_potrivește(storia_html, monkeypatch):
     connector = StoriaConnector()
 
