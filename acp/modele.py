@@ -22,6 +22,7 @@ class Subiect(BaseModel):
     an: int | None = None
     structura: str | None = None
     incalzire: str | None = None
+    stare: str | None = None
     dotari: list[str] = []
     locatie: str = ""
     zona_reala: str | None = None
