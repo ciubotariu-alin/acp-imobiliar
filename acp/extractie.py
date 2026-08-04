@@ -24,7 +24,7 @@ _STARE_RENOVAT = ["renovat", "modernizat", "renovare recenta", "renovare recent�
 _STARE_MARKETING = ["lux", "premium", "finisaje de calitate"]
 _STARE_GRI = ["la gri", "semifinisat", "nefinisat", "la rosu", "la roșu"]
 
-_PARCARE_LIPSA = ["fără nicio mențiune de parcare", "fără parcare", "fără mențiune"]
+_PARCARE_LIPSA = ["fără nicio mențiune de parcare", "fără parcare"]
 _PARCARE_RESEDINTA = ["loc de resedinta", "loc de reședință", "parcare adp",
                       "inchiriat de la primarie", "închiriat de la primărie"]
 _PARCARE_OWNED = ["garaj", "subteran", "parcare proprie", "loc cu act",
@@ -67,12 +67,12 @@ def extrage_stare(text: str) -> tuple[str | None, float]:
 
 def extrage_parcare(text: str, an: int | None = None) -> str | None:
     t = text.lower()
-    if _contine(t, _PARCARE_LIPSA):
-        return "none"
     if _contine(t, _PARCARE_RESEDINTA):
         return "resedinta"
     if _contine(t, _PARCARE_OWNED):
         return "owned"
+    if _contine(t, _PARCARE_LIPSA):
+        return "none"
     if _contine(t, _PARCARE_ORICE):
         if an is not None and an >= 2008:
             return "owned"

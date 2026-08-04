@@ -61,3 +61,18 @@ def test_parcare_ambigua_heuristica_pe_vechime():
 
 def test_parcare_lipsa_none_string():
     assert extrage_parcare("apartament fără nicio mențiune de parcare") == "none"
+
+
+def test_parcare_owned_wins_over_negation():
+    """Regression: explicit owned keywords should win over _PARCARE_LIPSA."""
+    assert extrage_parcare("apartament cu garaj propriu, fără parcare pentru oaspeți") == "owned"
+
+
+def test_parcare_resedinta_wins_over_negation():
+    """Regression: explicit reședință keywords should win over _PARCARE_LIPSA."""
+    assert extrage_parcare("loc de reședință închiriat de la primărie, fără parcare pentru oaspeți") == "resedinta"
+
+
+def test_parcare_generic_no_info_not_masked():
+    """Regression: bare 'fără mențiune' (generic no-info) should not mask explicit owned."""
+    assert extrage_parcare("apartament fără mențiune despre încălzire, are parcare proprie") == "owned"
