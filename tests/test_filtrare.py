@@ -1,4 +1,6 @@
-from acp.modele import Subiect, Comparabila
+import pytest
+
+from acp.modele import Subiect, Comparabila, Ajustare
 from acp.filtrare import filtreaza, dedup, marcheaza_outlieri
 
 
@@ -38,3 +40,49 @@ def test_marcheaza_outlieri():
     pastrate, outlieri = marcheaza_outlieri(comps)
     assert len(outlieri) == 1
     assert outlieri[0].euro_mp < 500
+
+
+def test_marcheaza_outlieri_foloseste_baza_ajustata():
+    """marcheaza_outlieri trebuie să evalueze IQR pe euro_mp_ajustat, nu pe euro_mp brut.
+
+    Grup normal (fără ajustări): 1101, 1275, 1308, 1369 €/mp -> bandă ~[902, 1548].
+
+    - `ieftin_brut_dar_ajustat_normal`: brut 500 €/mp (outlier brut, sub bandă), dar
+      ajustările (etaj bun + o corecție suplimentară) îi ridică €/mp ajustat la 1300,
+      în bandă -> trebuie PĂSTRAT (nu marcat outlier).
+    - `normal_brut_dar_ajustat_extrem`: brut 1300 €/mp (normal, în bandă), dar
+      ajustările (parter + o corecție suplimentară, ambele negative) îi coboară
+      €/mp ajustat la 325, sub bandă -> trebuie MARCAT outlier.
+    """
+    supr = 65
+    grup_normal = [_comp(p * supr, supr) for p in [1101, 1275, 1308, 1369]]
+
+    ieftin_brut_dar_ajustat_normal = Comparabila(
+        sursa="storia", pret_eur=500 * supr, supr_totala=supr, dotari=[],
+        ajustari=[
+            Ajustare(factor="etaj", procent=0.05, motiv="etaj foarte căutat"),
+            Ajustare(factor="corectie_test", procent=1.55,
+                     motiv="ajustare artificială mare, doar pt izolarea testului"),
+        ],
+    )
+    assert ieftin_brut_dar_ajustat_normal.euro_mp == 500
+    assert ieftin_brut_dar_ajustat_normal.euro_mp_ajustat == pytest.approx(1300)
+
+    normal_brut_dar_ajustat_extrem = Comparabila(
+        sursa="storia", pret_eur=1300 * supr, supr_totala=supr, dotari=[],
+        ajustari=[
+            Ajustare(factor="etaj", procent=-0.05, motiv="parter"),
+            Ajustare(factor="corectie_test", procent=-0.70,
+                     motiv="ajustare artificială mare, doar pt izolarea testului"),
+        ],
+    )
+    assert normal_brut_dar_ajustat_extrem.euro_mp == 1300
+    assert normal_brut_dar_ajustat_extrem.euro_mp_ajustat == pytest.approx(325)
+
+    comps = grup_normal + [ieftin_brut_dar_ajustat_normal, normal_brut_dar_ajustat_extrem]
+    pastrate, outlieri = marcheaza_outlieri(comps)
+
+    assert ieftin_brut_dar_ajustat_normal in pastrate
+    assert ieftin_brut_dar_ajustat_normal not in outlieri
+    assert normal_brut_dar_ajustat_extrem in outlieri
+    assert normal_brut_dar_ajustat_extrem not in pastrate

@@ -1,5 +1,5 @@
 import pytest
-from acp.modele import Subiect, Comparabila, Ajustare
+from acp.modele import Subiect, Comparabila
 from acp.analiza import analizeaza
 
 
@@ -30,16 +30,16 @@ def test_pozitionare_peste_mediana():
 
 
 def _comps_cu_ajustare():
-    """Comparabile la care una are o ajustare semnificativă (fără parcare, spre
-    deosebire de subiect), astfel încât mediana ajustată să difere clar de cea brută."""
+    """Comparabile care diferă de subiect (66mp, an 2009) ca suprafață și vechime,
+    astfel încât `aplica_ajustari` le calculează ajustări reale (marime, vechime)
+    neuniforme între ele -> mediana ajustată diferă clar de cea brută.
+
+    Toate au 65mp (vs subiectul 66mp) -> ajustare "marime" mică, uniformă. Anii
+    diferă însă vs subiectul (2008, 2009, 2009, 2010) -> ajustare "vechime"
+    pozitivă pentru comparabila mai veche, negativă pentru cea mai nouă, ceea ce
+    schimbă poziția relativă a comparabilelor și deci mediana."""
     date = [(85000, 65, 2008), (89000, 65, 2009), (82900, 65, 2009), (87000, 65, 2010)]
-    comps = [Comparabila(sursa="s", pret_eur=p, supr_totala=s, an=a) for p, s, a in date]
-    # a doua comparabilă (89000 €, 65 mp → ~1369 €/mp) primește o ajustare negativă
-    # mare (lipsă parcare), care îi scade €/mp ajustat sub restul grupului.
-    comps[1] = comps[1].model_copy(update={
-        "ajustari": [Ajustare(factor="parcare", procent=-0.15, motiv="fără parcare, spre deosebire de subiect")]
-    })
-    return comps
+    return [Comparabila(sursa="s", pret_eur=p, supr_totala=s, an=a) for p, s, a in date]
 
 
 def test_verdict_foloseste_mediana_ajustata_nu_bruta():

@@ -41,17 +41,22 @@ def dedup(comps: list[Comparabila]) -> list[Comparabila]:
 
 def marcheaza_outlieri(comps: list[Comparabila], k: float = 1.5
                        ) -> tuple[list[Comparabila], list[Comparabila]]:
-    """Separă outlierii după regula IQR (doar cei cu preț). Cele fără preț rămân în 'pastrate'."""
-    cu_pret = [c for c in comps if c.euro_mp is not None]
-    fara_pret = [c for c in comps if c.euro_mp is None]
+    """Separă outlierii după regula IQR pe €/mp AJUSTAT (doar cei cu preț).
+
+    Cele fără preț (euro_mp_ajustat None) rămân în 'pastrate'. Se folosește baza
+    ajustată (nu brută) pentru că o comparabilă poate fi atipică brut dar normală
+    după ajustările de etaj/vechime/stare etc. — sau invers.
+    """
+    cu_pret = [c for c in comps if c.euro_mp_ajustat is not None]
+    fara_pret = [c for c in comps if c.euro_mp_ajustat is None]
     if len(cu_pret) < 4:
         return comps, []
-    valori = sorted(c.euro_mp for c in cu_pret)
+    valori = sorted(c.euro_mp_ajustat for c in cu_pret)
     q = statistics.quantiles(valori, n=4, method='inclusive')
     q1, q3 = q[0], q[2]
     iqr = q3 - q1
     jos, sus = q1 - k * iqr, q3 + k * iqr
     pastrate, outlieri = list(fara_pret), []
     for c in cu_pret:
-        (outlieri if not (jos <= c.euro_mp <= sus) else pastrate).append(c)
+        (outlieri if not (jos <= c.euro_mp_ajustat <= sus) else pastrate).append(c)
     return pastrate, outlieri
