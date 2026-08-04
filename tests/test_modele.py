@@ -76,3 +76,8 @@ def test_pret_ajustat_none_cand_lipseste_pretul():
                     ajustari=[Ajustare(factor="etaj", procent=0.05, motiv="x")])
     assert c.pret_ajustat is None
     assert c.euro_mp_ajustat is None
+
+
+def test_comparabila_detalii_complete_default_false():
+    c = Comparabila(sursa="test", pret_eur=90000.0, supr_totala=60.0)
+    assert c.detalii_complete is False
