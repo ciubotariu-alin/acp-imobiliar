@@ -54,7 +54,7 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run python exemple/demo.py
 - `acp/statistica.py`, `acp/filtrare.py`, `acp/context.py`, `acp/analiza.py` — nucleu determinist
 - `acp/connectors/` — 9 conectori: 3 Playwright (imobiliare.ro, storia.ro, olx.ro) + 6 Fetch (publi24.ro, romimo.ro, sudrezidential.ro, lajumate.ro, waa2.com, anuntul.ro)
 - `acp/raport/` — template HTML + randare PDF (WeasyPrint)
-- `acp/pipeline.py` — PipelineOrchestrator: orchestrare end-to-end [0]-[7]
+- `acp/core/pipeline.py` — PipelineOrchestrator: orchestrare end-to-end [0]-[7]
 - `SKILL.md` — instrucțiunile agentului (persona 20 ani)
 
 ## Tests
@@ -77,12 +77,12 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run pytest tests/test_pipeline.py -v
 | imobiliare.ro | Implemented | Playwright | Anti-bot detection |
 | storia.ro | Implemented | Playwright | Anti-bot detection |
 | olx.ro | Implemented | Playwright | Dynamic rendering |
-| publi24.ro | Implemented | Fetch | Simple HTTP |
-| romimo.ro | Implemented | Fetch | Simple HTTP |
-| sudrezidential.ro | Implemented | Fetch | Simple HTTP |
-| lajumate.ro | Implemented | Fetch | Simple HTTP |
-| waa2.com | Implemented | Fetch | Simple HTTP |
-| anuntul.ro | Implemented | Fetch | Simple HTTP |
+| publi24.ro | Scaffold / TODO | Fetch | Parser stub |
+| romimo.ro | Scaffold / TODO | Fetch | Parser stub |
+| sudrezidential.ro | Scaffold / TODO | Fetch | Parser stub |
+| lajumate.ro | Scaffold / TODO | Fetch | Parser stub |
+| waa2.com | Scaffold / TODO | Fetch | Parser stub |
+| anuntul.ro | Scaffold / TODO | Fetch | Parser stub |
 
 ## Disclaimer
 
