@@ -68,11 +68,11 @@ def imbogateste_detalii(
 
 ```python
 class CacheDetalii:
-    def __init__(self, dir: str = ".cache/detalii", ttl_zile: int = 14): ...
+    def __init__(self, dir: str = ".cache/detalii", ttl_zile: int = 1): ...
     def get(self, url: str) -> dict | None:   # None dacă miss sau expirat
     def set(self, url: str, campuri: dict) -> None:
 ```
-Cheie = `sha256(url)`; fișier `.cache/detalii/<hash>.json` cu `{"fetched_at": ISO, "campuri": {...}}`. Stochează **câmpurile parsate**, nu HTML brut (mai mic, mai rapid). TTL implicit 14 zile. Directorul `.cache/` e gitignorat.
+Cheie = `sha256(url)`; fișier `.cache/detalii/<hash>.json` cu `{"fetched_at": ISO, "campuri": {...}}`. Stochează **câmpurile parsate**, nu HTML brut (mai mic, mai rapid). TTL implicit **1 zi** (prețurile pot scădea; vrem date proaspete). Directorul `.cache/` e gitignorat.
 
 ### 5. Per-conector — fetch text detail-page
 
