@@ -174,3 +174,28 @@ def test_stare_aplicata_doar_peste_prag_incredere():
     a = _factor(calculeaza_ajustari(s, c_bun), "stare")
     # 0.10 - (-0.15) = 0.25 → plafon 0.15
     assert round(a.procent, 4) == 0.15
+
+
+def test_parcare_subiect_owned_vs_comp_resedinta_ajusteaza_in_sus():
+    # subiect cu parcare owned, comparabila doar reședință (zero capital) → comp inferior → +8000
+    s = _subiect(parcare="garaj subteran propriu", an=2015)
+    c = _comp(parcare_tip="resedinta")
+    a = _factor(calculeaza_ajustari(s, c, valoare_parcare_eur=8000.0), "parcare")
+    assert a is not None
+    assert a.valoare_abs == 8000.0
+
+
+def test_parcare_subiect_resedinta_vs_comp_owned_ajusteaza_in_jos():
+    # subiect doar reședința (zero capital), comparabila owned → comp superior → -8000
+    s = _subiect(parcare="loc de reședință închiriat de la primărie", an=1985)
+    c = _comp(parcare_tip="owned")
+    a = _factor(calculeaza_ajustari(s, c, valoare_parcare_eur=8000.0), "parcare")
+    assert a is not None
+    assert a.valoare_abs == -8000.0
+
+
+def test_parcare_ambele_resedinta_fara_ajustare():
+    # ambele reședința → niciun activ de capital de comparat → fără ajustare
+    s = _subiect(parcare="loc de reședința", an=1985)
+    c = _comp(parcare_tip="resedinta")
+    assert _factor(calculeaza_ajustari(s, c), "parcare") is None
