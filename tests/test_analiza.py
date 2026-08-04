@@ -74,3 +74,20 @@ def test_outlierii_sunt_expusi_dar_excluse_din_mediana():
     assert outlier not in a.comparabile
     # outlierul (300 €/mp) nu a tras mediana/minimul în jos
     assert a.stat_ajustat.minim > 300
+
+
+def test_analizeaza_populeaza_ajustari_si_difera_de_brut():
+    subiect = Subiect(pret_eur=100000.0, supr_totala=60.0, camere=2,
+                      an=2010, etaj=5, etaje_total=10)
+    # comparabile care diferă de subiect ca an/etaj → ajustări nenule
+    comparabile = [
+        Comparabila(sursa="a", pret_eur=95000.0, supr_totala=60.0, an=2000, etaj=0, marcaj="activ"),
+        Comparabila(sursa="b", pret_eur=98000.0, supr_totala=62.0, an=2004, etaj=1, marcaj="activ"),
+        Comparabila(sursa="c", pret_eur=102000.0, supr_totala=58.0, an=2008, etaj=3, marcaj="activ"),
+        Comparabila(sursa="d", pret_eur=100000.0, supr_totala=61.0, an=2012, etaj=6, marcaj="activ"),
+    ]
+    analiza = analizeaza(subiect, comparabile, tinta_zile=90)
+    # cel puțin o comparabilă păstrată are ajustări nenule
+    assert any(len(c.ajustari) > 0 for c in analiza.comparabile)
+    # mediana ajustată diferă de cea brută (ajustările au efect)
+    assert analiza.stat_ajustat.mediana != analiza.stat_brut.mediana

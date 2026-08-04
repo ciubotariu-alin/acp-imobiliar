@@ -5,6 +5,7 @@ from acp.modele import Subiect, Comparabila, Analiza
 from acp.statistica import calculeaza_statistici
 from acp.filtrare import filtreaza, dedup, marcheaza_outlieri
 from acp.context import calculeaza_context
+from acp.ajustari import aplica_ajustari
 
 
 def _incadrare(pozitionare_pct: float) -> str:
@@ -17,11 +18,16 @@ def _incadrare(pozitionare_pct: float) -> str:
 
 def analizeaza(subiect: Subiect, comparabile: list[Comparabila], tinta_zile: int,
                corectie: tuple[float, float] = (0.04, 0.08),
-               surse: list[str] | None = None) -> Analiza:
+               surse: list[str] | None = None,
+               valoare_parcare_eur: float = 8000.0,
+               valoare_boxa_eur: float = 2000.0) -> Analiza:
     # randament din chirii: Plan 3
     vanzari = [c for c in comparabile if c.tip == "vanzare"]
     filtrate = filtreaza(subiect, dedup(vanzari))
-    pastrate, outlieri = marcheaza_outlieri(filtrate)
+    ajustate, _excluse_supra = aplica_ajustari(
+        subiect, filtrate, valoare_parcare_eur, valoare_boxa_eur
+    )
+    pastrate, outlieri = marcheaza_outlieri(ajustate)
 
     valori_brut = [c.euro_mp for c in pastrate if c.euro_mp is not None]
     valori_ajustat = [c.euro_mp_ajustat for c in pastrate if c.euro_mp_ajustat is not None]
