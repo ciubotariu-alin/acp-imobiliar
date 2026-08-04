@@ -55,6 +55,11 @@ pasul [0]. `euro_mp` se calculează automat (`pret_eur / supr_totala`) — nu-l 
   zona respectivă) → semnalează-o în raport, nu o corecta silențios.
 - Dacă un câmp e greșit: nu regenerezi toată fișa — spui „setez `etaj=4` (era gol)" și continui.
 
+**Stare și parcare (validare vizuală pe subiect):**
+- Deschide pozele anunțului subiect și stabilește `stare` ∈ {renovat, bun, gri, necesita_renovare} cu ochii tăi — nu te baza pe adjectivele de marketing din text („lux", „premium" nu înseamnă renovat).
+- Pentru parcare, distinge tipul: `owned` (garaj/subteran/loc cu act, tipic complexe noi — activ de capital) vs. `resedinta` (loc închiriat de la primărie la blocuri vechi — fără valoare de capital). Setează `Subiect.parcare` cu textul care reflectă tipul real.
+- Validarea vizuală se face DOAR pe subiect. Comparabilele sunt evaluate programatic prin keyword-matching conservator (structura/incalzire/stare/parcare din `acp/extractie.py`) — ajustările de stare se aplică doar peste pragul de încredere.
+
 ### [2] LOCALIZARE
 
 `acp/core/localizare.py::normalizeaza_zona(locatie, zona_reala)` există ca utilitar de mapare
@@ -133,6 +138,10 @@ la el pentru rularea curentă.
 - Încadrare: **> +5% → „supraevaluat"**, **< −5% → „sub piață"**, între ele → **„corect"**
 - Context de piață (`acp/context.py`): tensiune calculată din numărul de anunțuri active —
   **≤5 active → „piața vânzătorului"**, **≥15 → „piața cumpărătorului"**, altfel „echilibrată"
+
+**Ajustarea comparabilelor (Task 11):** `analizeaza()` apelează automat `aplica_ajustari()`, care aduce fiecare comparabilă la nivelul subiectului (etaj, vechime, mărime, dotări, parcare, structură, încălzire, stare). Direcția: subiect − comparabilă. Comparabilele supra-ajustate (ajustare brută > 25%) sunt excluse; cele cu ajustare netă > 15% rămân dar sunt marcate (`ajustare_neta_mare`) — semnalează-le în raport.
+
+**Valoarea parcării e parametru:** `analizeaza(..., valoare_parcare_eur=..., valoare_boxa_eur=...)`. Parcarea variază pe cartier și complex — setează valoarea potrivită pieței subiectului (default conservator €8.000 parcare / €2.000 boxă). La blocuri vechi cu loc de reședință, parcarea nu are valoare de capital (ajustare €0).
 
 **Validare agent:**
 - Poziționarea calculată se potrivește cu ce vezi tu în comparabile? Dacă mediana pare distorsionată
