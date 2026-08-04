@@ -41,6 +41,7 @@ structura: str | None = None       # caramida | bca | panou | beton
 incalzire: str | None = None       # centrala_proprie | termoficare | centrala_bloc
 stare: str | None = None           # renovat | bun | necesita_renovare | gri
 stare_incredere: float = 0.0       # 0-1; ajustarea de stare se aplică doar peste un prag
+parcare_tip: str | None = None     # owned | resedinta | none
 ```
 
 **`Ajustare`** primește suport pentru ajustări **absolute** (parcare, boxă — valori fixe în €, nu procent):
@@ -64,13 +65,14 @@ Keyword-matching centralizat pe textul brut al anunțului (titlu + descriere), a
 - `extrage_structura(text) -> str | None`
 - `extrage_incalzire(text) -> str | None`
 - `extrage_stare(text) -> tuple[str | None, float]` — întoarce `(stare, incredere)`
+- `extrage_parcare(text, an) -> str | None` — întoarce `owned | resedinta | none`; ambiguu → heuristică pe vechime (vezi Dotări)
 
 Regula pe stare: **ambiguu → `None` + încredere joasă**. Nu fabricăm valoare din limbaj de marketing. Ajustarea de stare se aplică doar dacă `stare_incredere > prag` (prag = 0.5).
 
 ### 3. `acp/ajustari.py` (nou) — calculul ajustărilor
 
-- `calculeaza_ajustari(comparabila, subiect) -> list[Ajustare]` — construiește lista de ajustări factor cu factor.
-- `aplica_ajustari(subiect, comparabile) -> tuple[list[Comparabila], list[Comparabila]]` — populează `c.ajustari` pe fiecare comparabilă și separă comparabilele **excluse** de garda de supra-ajustare de cele **păstrate**.
+- `calculeaza_ajustari(comparabila, subiect, valoare_parcare_eur, valoare_boxa_eur) -> list[Ajustare]` — construiește lista de ajustări factor cu factor.
+- `aplica_ajustari(subiect, comparabile, valoare_parcare_eur=8000, valoare_boxa_eur=2000) -> tuple[list[Comparabila], list[Comparabila]]` — populează `c.ajustari` pe fiecare comparabilă și separă comparabilele **excluse** de garda de supra-ajustare de cele **păstrate**. Valorile de parcare/boxă sunt parametri (variază pe cartier/complex); agentul AI, care știe cartierul din pasul [0], le setează per-analiză, cu default conservator.
 
 ## Factorii și valorile
 
@@ -88,7 +90,7 @@ Ajustarea = `nivel(subiect) − nivel(comparabila)`, plafon **±5%**. Fiecare et
 
 ### Vechime (an)
 
-**1% per an diferență**, plafon **±10%**. Suplimentar: comparabilă construită **pre-1977** primește **−3%** (stigmat seismic) dacă subiectul e post-1977.
+**1% per an diferență**, plafon **±10%**.
 
 ### Mărime (size curve)
 
@@ -98,13 +100,23 @@ Ajustarea = `nivel(subiect) − nivel(comparabila)`, plafon **±5%**. Fiecare et
 
 | Dotare | Tip | Valoare |
 |---|---|---|
-| Parcare/garaj | absolut € | +€9.000 (diferență) |
-| Boxă/depozit | absolut € | +€2.000 (diferență) |
+| Parcare **owned** | absolut € | `valoare_parcare_eur` (default €8.000, parametru) |
+| Parcare **reședință** | — | **€0** (nu-i capital transferabil) |
+| Boxă/depozit | absolut € | `valoare_boxa_eur` (default €2.000, parametru) |
 | Mobilat + utilat | procent | +4% |
 | A/C | procent | +1%/unitate, plafon +3% |
 | Balcon/terasă | procent | +3% |
 
-Se ajustează doar **diferența**: dacă subiectul are parcare și comparabila nu → `+€9.000` pe comparabilă; invers → `−€9.000`. Detecția se face pe listele `dotari` (subiect vs. comparabilă) prin keyword-matching.
+**Parcarea nu-i uniformă.** Un „loc de parcare" poate fi:
+- **`owned`** — garaj/subteran/loc cu act, tipic în complexe noi; activ transferabil, se vinde cu apartamentul.
+- **`resedinta`** — loc închiriat de la primărie (ADP), tipic la blocuri vechi; taxă anuală, nu-l deții → **€0 capital**.
+
+Detecția tipului (`extrage_parcare`):
+- `owned` ← „garaj", „subteran", „parcare proprie", „loc cu act", „parcare inclusă în preț".
+- `resedinta` ← „loc de reședință", „parcare ADP", „închiriat de la primărie".
+- Ambiguu („loc de parcare" simplu) → **heuristică pe vechime**: `an ≥ 2008` (sau context „complex") → `owned`; `an < 2000` → `resedinta`; între → `None` (fără ajustare).
+
+Ajustarea de capital se aplică doar diferenței pe partea `owned`: subiect `owned` și comparabilă fără → `+valoare_parcare_eur`; invers → `−valoare_parcare_eur`. Reședința nu produce ajustare. Boxa se ajustează pe diferența listelor `dotari` (subiect vs. comparabilă).
 
 ### Structură
 
@@ -147,7 +159,7 @@ Comparabilele folosesc keyword-matching (programatic, ieftin, fără LLM). **Sub
 
 ## Testare
 
-- **Unit** pe `calculeaza_ajustari`: fiecare factor izolat (etaj parter/1/intermediar/ultim; vechime în/peste plafon; pre-1977; mărime; fiecare dotare; structură; încălzire; stare pe praguri de încredere).
+- **Unit** pe `calculeaza_ajustari`: fiecare factor izolat (etaj parter/1/intermediar/ultim; vechime în/peste plafon; mărime; parcare owned/reședință/ambiguu; boxă; fiecare dotare procentuală; structură; încălzire; stare pe praguri de încredere).
 - **Unit** pe garda anti-supra-ajustare: comparabilă cu brut > 25% e exclusă; netă > 15% e marcată.
 - **Unit** pe extractori: text cu keyword clar → câmp; text ambiguu → `None` + încredere joasă.
 - **Unit** pe `pret_ajustat`: procent + absolut combinate, ordinea corectă.
