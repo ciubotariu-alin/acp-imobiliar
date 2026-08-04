@@ -39,3 +39,40 @@ def test_comparabila_fara_pret():
                     ajustari=[])
     assert c.euro_mp is None
     assert c.pret_ajustat is None
+
+
+def test_ajustare_suporta_procent_si_absolut():
+    a = Ajustare(factor="parcare", valoare_abs=8000.0, motiv="parcare owned")
+    assert a.procent == 0.0
+    assert a.valoare_abs == 8000.0
+
+
+def test_pret_ajustat_combina_procent_si_absolut():
+    c = Comparabila(
+        sursa="test", pret_eur=100000.0, supr_totala=50.0,
+        ajustari=[
+            Ajustare(factor="etaj", procent=0.05, motiv="etaj"),
+            Ajustare(factor="parcare", valoare_abs=8000.0, motiv="parcare"),
+        ],
+    )
+    # 100000 * (1 + 0.05) + 8000 = 113000
+    assert c.pret_ajustat == 113000.0
+    assert c.euro_mp_ajustat == 113000.0 / 50.0
+
+
+def test_comparabila_campuri_noi_default():
+    c = Comparabila(sursa="test", pret_eur=90000.0, supr_totala=60.0)
+    assert c.etaje_total is None
+    assert c.structura is None
+    assert c.incalzire is None
+    assert c.stare is None
+    assert c.stare_incredere == 0.0
+    assert c.parcare_tip is None
+    assert c.ajustare_neta_mare is False
+
+
+def test_pret_ajustat_none_cand_lipseste_pretul():
+    c = Comparabila(sursa="test", pret_eur=None, supr_totala=60.0,
+                    ajustari=[Ajustare(factor="etaj", procent=0.05, motiv="x")])
+    assert c.pret_ajustat is None
+    assert c.euro_mp_ajustat is None
