@@ -12,6 +12,9 @@ CAP_VECHIME = 0.10
 CAP_MARIME = 0.03
 CAP_STARE = 0.15
 
+PRAG_NET = 0.15
+PRAG_BRUT = 0.25
+
 _STRUCTURA_VAL = {"caramida": 0.02, "beton": 0.02, "bca": 0.0, "panou": -0.03}
 _INCALZIRE_VAL = {"centrala_proprie": 0.03, "centrala_bloc": 0.0, "termoficare": -0.02}
 _STARE_VAL = {"renovat": 0.10, "bun": 0.0, "gri": -0.05, "necesita_renovare": -0.15}
@@ -179,3 +182,39 @@ def calculeaza_ajustari(subiect: Subiect, comparabila: Comparabila,
         _ajustare_stare(subiect, comparabila),
     ]
     return [a for a in candidati if a is not None]
+
+
+def _procent_echivalent(ajustari: list[Ajustare], pret_eur: float) -> tuple[float, float]:
+    """Convertește ajustările (procent + absolut) în procent-echivalent față de preț.
+
+    Întoarce (net, brut): net = suma cu semn, brut = suma valorilor absolute.
+    """
+    net = brut = 0.0
+    for a in ajustari:
+        p = a.procent + (a.valoare_abs / pret_eur)
+        net += p
+        brut += abs(p)
+    return net, brut
+
+
+def aplica_ajustari(subiect: Subiect, comparabile: list[Comparabila],
+                    valoare_parcare_eur: float = 8000.0,
+                    valoare_boxa_eur: float = 2000.0
+                    ) -> tuple[list[Comparabila], list[Comparabila]]:
+    """Populează c.ajustari pe fiecare comparabilă și aplică garda anti-supra-ajustare.
+
+    Întoarce (pastrate, excluse). O comparabilă cu brut > PRAG_BRUT e exclusă;
+    una cu |net| > PRAG_NET e păstrată dar marcată (ajustare_neta_mare = True).
+    """
+    pastrate: list[Comparabila] = []
+    excluse: list[Comparabila] = []
+    for c in comparabile:
+        c.ajustari = calculeaza_ajustari(subiect, c, valoare_parcare_eur, valoare_boxa_eur)
+        if c.pret_eur:
+            net, brut = _procent_echivalent(c.ajustari, c.pret_eur)
+            if brut > PRAG_BRUT:
+                excluse.append(c)
+                continue
+            c.ajustare_neta_mare = abs(net) > PRAG_NET
+        pastrate.append(c)
+    return pastrate, excluse

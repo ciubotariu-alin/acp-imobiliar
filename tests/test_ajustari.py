@@ -1,5 +1,5 @@
 from acp.modele import Subiect, Comparabila
-from acp.ajustari import calculeaza_ajustari
+from acp.ajustari import calculeaza_ajustari, aplica_ajustari
 
 
 def _subiect(**kw):
@@ -199,3 +199,42 @@ def test_parcare_ambele_resedinta_fara_ajustare():
     s = _subiect(parcare="loc de reședința", an=1985)
     c = _comp(parcare_tip="resedinta")
     assert _factor(calculeaza_ajustari(s, c), "parcare") is None
+
+
+def test_aplica_populeaza_ajustari_pe_comparabile():
+    s = _subiect(an=2010, etaj=5, etaje_total=10)
+    c = _comp(an=2003, etaj=0, pret_eur=100000.0, supr_totala=60.0)
+    pastrate, excluse = aplica_ajustari(s, [c])
+    assert len(pastrate) == 1
+    assert len(excluse) == 0
+    assert len(pastrate[0].ajustari) >= 2  # vechime + etaj
+    assert pastrate[0].pret_ajustat != pastrate[0].pret_eur
+
+
+def test_garda_exclude_comparabila_supra_ajustata():
+    # brut > 0.25: vechime +0.10 (plafon) + stare +0.15 (plafon) = 0.25 brut ...
+    # adăugăm și mărime +0.03 → brut = 0.28 > 0.25 → exclusă
+    s = _subiect(an=2025, supr_totala=60.0, stare="renovat")
+    c = _comp(an=2000, supr_totala=80.0, stare="necesita_renovare",
+              stare_incredere=0.9, pret_eur=100000.0)
+    pastrate, excluse = aplica_ajustari(s, [c])
+    assert len(excluse) == 1
+    assert len(pastrate) == 0
+
+
+def test_garda_marcheaza_ajustare_neta_mare_dar_pastreaza():
+    # net > 0.15 dar brut <= 0.25: vechime +0.10 + etaj +0.05 = net 0.15 brut 0.15
+    # facem net 0.16: vechime +0.10, structura +0.05 (caramida vs panou), balcon +0.03 = 0.18
+    s = _subiect(an=2020, structura="caramida", dotari=["balcon"])
+    c = _comp(an=2010, structura="panou", dotari=[], pret_eur=100000.0)
+    pastrate, excluse = aplica_ajustari(s, [c])
+    assert len(pastrate) == 1
+    assert pastrate[0].ajustare_neta_mare is True
+
+
+def test_garda_ignora_comparabila_fara_pret():
+    s = _subiect(an=2010)
+    c = _comp(an=2000, pret_eur=None)
+    pastrate, excluse = aplica_ajustari(s, [c])
+    assert len(pastrate) == 1
+    assert pastrate[0].ajustare_neta_mare is False
