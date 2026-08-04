@@ -71,7 +71,7 @@ Regula pe stare: **ambiguu → `None` + încredere joasă**. Nu fabricăm valoar
 
 ### 3. `acp/ajustari.py` (nou) — calculul ajustărilor
 
-- `calculeaza_ajustari(comparabila, subiect, valoare_parcare_eur, valoare_boxa_eur) -> list[Ajustare]` — construiește lista de ajustări factor cu factor.
+- `calculeaza_ajustari(subiect, comparabila, valoare_parcare_eur, valoare_boxa_eur) -> list[Ajustare]` — construiește lista de ajustări factor cu factor.
 - `aplica_ajustari(subiect, comparabile, valoare_parcare_eur=8000, valoare_boxa_eur=2000) -> tuple[list[Comparabila], list[Comparabila]]` — populează `c.ajustari` pe fiecare comparabilă și separă comparabilele **excluse** de garda de supra-ajustare de cele **păstrate**. Valorile de parcare/boxă sunt parametri (variază pe cartier/complex); agentul AI, care știe cartierul din pasul [0], le setează per-analiză, cu default conservator.
 
 ## Factorii și valorile
