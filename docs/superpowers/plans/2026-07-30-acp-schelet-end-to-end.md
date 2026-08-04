@@ -17,7 +17,9 @@
 - Corecția anunț→tranzacție: interval implicit **4–8%** (0.04–0.08), aplicat global la verdict.
 - Stil PDF: paletă bleumarin `#1b2a4a` + crem `#f5efe0`, ca documentul de referință.
 - Disclaimer fix pe fiecare raport: „Document confidențial • Estimare analitică, nu evaluare autorizată ANEVAR".
-- Fiecare task se termină cu commit; mesaje de commit în limba engleză, prefix `feat:`/`test:`/`chore:`.
+- Fiecare task se termină cu commit; mesaj cu prefix `feat:`/`test:`/`chore:`/`docs:`. Textul poate
+  fi în engleză și poate conține termeni românești de domeniu (ex. „modele", „filtrare") — folosește
+  mesajele din task-uri ca atare.
 
 ---
 
@@ -410,6 +412,9 @@ git commit -m "feat: calcul statistici min/mediana/max/quartile"
 
 - [ ] **Step 1: Scrie testele care eșuează**
 
+Notă: `filtreaza` verifică suprafață + vechime față de subiect (filtrarea pe număr de camere
+și zonă se face de connector la momentul căutării, deci `Comparabila` nu are câmp `camere`).
+
 `tests/test_filtrare.py`:
 ```python
 from acp.modele import Subiect, Comparabila
@@ -420,26 +425,23 @@ def _subiect():
     return Subiect(pret_eur=87000, supr_totala=66, camere=2, an=2009, locatie="Confort City")
 
 
-def _comp(pret, supr, camere=2, an=2009, etaj=None, sursa="storia"):
-    return Comparabila(sursa=sursa, pret_eur=pret, supr_totala=supr, camere_placeholder=None,
-                       etaj=etaj, an=an, dotari=[]) if False else Comparabila(
-        sursa=sursa, pret_eur=pret, supr_totala=supr, etaj=etaj, an=an, dotari=[])
+def _comp(pret, supr, an=2009, etaj=None, sursa="storia"):
+    return Comparabila(sursa=sursa, pret_eur=pret, supr_totala=supr,
+                       etaj=etaj, an=an, dotari=[])
 
 
 def test_filtreaza_dupa_suprafata():
     comps = [_comp(85000, 65), _comp(85900, 86)]  # 86mp = +30% > 20%
-    rezultat = filtreaza(_subiect(), comps, camere_map={65: 2, 86: 2})
+    rezultat = filtreaza(_subiect(), comps)
     suprafete = {c.supr_totala for c in rezultat}
-    assert 65 in suprafete
-    assert 86 not in suprafete
+    assert 65 in suprafete and 86 not in suprafete
 
 
 def test_filtreaza_dupa_vechime():
     comps = [_comp(85000, 65, an=2009), _comp(85000, 65, an=1985)]
-    rezultat = filtreaza(_subiect(), comps, camere_map={65: 2})
+    rezultat = filtreaza(_subiect(), comps)
     ani = {c.an for c in rezultat}
-    assert 2009 in ani
-    assert 1985 not in ani
+    assert 2009 in ani and 1985 not in ani
 
 
 def test_dedup_elimina_duplicate():
@@ -456,26 +458,6 @@ def test_marcheaza_outlieri():
     assert len(outlieri) == 1
     assert outlieri[0].euro_mp < 500
 ```
-
-Notă: în test, `filtreaza` primește `camere_map` fiindcă `Comparabila` nu are câmp `camere` (comparabilele sunt pre-filtrate pe camere de connector la căutare). Vezi implementarea — filtrarea pe camere se face în connector; aici verificăm suprafață + vechime. Simplificăm testul eliminând `camere_map`:
-
-```python
-# Înlocuiește cele două teste de mai sus care folosesc camere_map cu:
-def test_filtreaza_dupa_suprafata():
-    comps = [_comp(85000, 65), _comp(85900, 86)]
-    rezultat = filtreaza(_subiect(), comps)
-    suprafete = {c.supr_totala for c in rezultat}
-    assert 65 in suprafete and 86 not in suprafete
-
-
-def test_filtreaza_dupa_vechime():
-    comps = [_comp(85000, 65, an=2009), _comp(85000, 65, an=1985)]
-    rezultat = filtreaza(_subiect(), comps)
-    ani = {c.an for c in rezultat}
-    assert 2009 in ani and 1985 not in ani
-```
-
-(Folosește ACESTE două variante, fără `camere_map`; șterge variantele cu `camere_map` de mai sus.)
 
 - [ ] **Step 2: Rulează testele pentru a confirma că eșuează**
 

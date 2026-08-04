@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<style>
+  @page {
+    size: A4;
+    margin: 2cm 1.6cm;
+    @top-left { content: "ANALIZĂ COMPARATIVĂ DE PIAȚĂ (ACP)"; font-size: 8pt; color: #1b2a4a; }
+    @top-right { content: "{{ subiect.locatie }}"; font-size: 8pt; color: #7a8499; }
+    @bottom-left { content: "Document confidențial • Estimare analitică, nu evaluare autorizată ANEVAR"; font-size: 7pt; color: #7a8499; }
+    @bottom-right { content: "Pag. " counter(page); font-size: 7pt; color: #7a8499; }
+  }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; color: #26303f; font-size: 10pt; line-height: 1.45; }
+  h1 { color: #1b2a4a; font-size: 22pt; margin: 0 0 2pt; }
+  h2 { background: #1b2a4a; color: #fff; font-size: 13pt; padding: 6pt 10pt; margin: 18pt 0 8pt; }
+  .subtitlu { color: #4a5a7a; font-size: 11pt; margin-bottom: 14pt; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0; }
+  th { background: #1b2a4a; color: #fff; text-align: left; padding: 5pt 7pt; font-size: 9pt; }
+  td { padding: 5pt 7pt; border-bottom: 1px solid #e5e2d8; font-size: 9pt; }
+  tr.subiect td { background: #f5efe0; font-weight: bold; }
+  .fisa td:nth-child(odd) { font-weight: bold; width: 22%; }
+  .caseta { background: #f5efe0; border: 1px solid #d9cfa8; padding: 10pt 12pt; margin: 10pt 0; }
+  .eticheta { display: inline-block; background: #1b2a4a; color: #fff; padding: 2pt 8pt; font-size: 8pt; }
+  .nota { color: #7a8499; font-size: 8pt; margin-top: 6pt; }
+  ul { margin: 4pt 0 4pt 16pt; padding: 0; }
+</style>
+</head>
+<body>
+  <h1>Analiză Comparativă de Piață</h1>
+  <div class="subtitlu">{{ subiect.locatie }} — strategie de vânzare pe {{ analiza.tinta_zile }} de zile</div>
+
+  {% if narativ.recomandare %}
+  <div class="caseta"><strong>Recomandare de poziționare:</strong> {{ narativ.recomandare }}</div>
+  {% endif %}
+
+  <h2>Fișa proprietății</h2>
+  <table class="fisa">
+    <tr><td>Preț cerut</td><td>{{ eur(subiect.pret_eur) }}</td><td>Preț/mp</td><td>{{ "%.0f"|format(subiect.euro_mp) }} €/mp</td></tr>
+    <tr><td>Suprafață totală</td><td>{{ subiect.supr_totala }} mp</td><td>Camere</td><td>{{ subiect.camere }}{% if subiect.camere_potential %} ({{ subiect.camere_potential }}){% endif %}</td></tr>
+    <tr><td>Etaj</td><td>{{ subiect.etaj }}{% if subiect.etaje_total %} / {{ subiect.etaje_total }}{% endif %}</td><td>An construcție</td><td>{{ subiect.an or "—" }}</td></tr>
+    <tr><td>Încălzire</td><td>{{ subiect.incalzire or "—" }}</td><td>Dotare</td><td>{{ subiect.dotari|join(", ") or "—" }}</td></tr>
+  </table>
+
+  <h2>Context de piață</h2>
+  <p>Comparabile active în zonă: <strong>{{ analiza.context.nr_active }}</strong>.
+     Tensiune piață: <strong>{{ analiza.context.tensiune|replace("_", " ") }}</strong>.
+     {% if analiza.context.days_on_market_med %}Timp mediu pe piață: {{ "%.0f"|format(analiza.context.days_on_market_med) }} zile.{% endif %}</p>
+
+  <h2>Comparabile & analiză</h2>
+  <table>
+    <tr><th>Sursă</th><th>Supr.</th><th>Etaj</th><th>An</th><th>Preț</th><th>€/mp</th><th>€/mp ajustat</th></tr>
+    <tr class="subiect"><td>Subiect (anunțul tău)</td><td>{{ subiect.supr_totala }} mp</td><td>{{ subiect.etaj or "—" }}</td><td>{{ subiect.an or "—" }}</td><td>{{ eur(subiect.pret_eur) }}</td><td>{{ "%.0f"|format(subiect.euro_mp) }}</td><td>—</td></tr>
+    {% for c in analiza.comparabile %}
+    <tr>
+      <td>{{ c.sursa }}{% if c.marcaj != "activ" %} ({{ c.marcaj }}){% endif %}</td>
+      <td>{{ c.supr_totala }} mp</td><td>{{ c.etaj or "—" }}</td><td>{{ c.an or "—" }}</td>
+      <td>{% if c.pret_eur %}{{ eur(c.pret_eur) }}{% else %}listat{% endif %}</td>
+      <td>{% if c.euro_mp %}{{ "%.0f"|format(c.euro_mp) }}{% else %}—{% endif %}</td>
+      <td>{% if c.euro_mp_ajustat %}{{ "%.0f"|format(c.euro_mp_ajustat) }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  {% if analiza.outlieri %}
+  <p class="nota"><strong>Comparabile excluse din mediană (preț atipic):</strong></p>
+  <table>
+    <tr><th>Sursă</th><th>Supr.</th><th>Preț</th><th>€/mp</th></tr>
+    {% for c in analiza.outlieri %}
+    <tr>
+      <td>{{ c.sursa }}{% if c.marcaj != "activ" %} ({{ c.marcaj }}){% endif %}</td>
+      <td>{{ c.supr_totala }} mp</td>
+      <td>{% if c.pret_eur %}{{ eur(c.pret_eur) }}{% else %}listat{% endif %}</td>
+      <td>{% if c.euro_mp %}{{ "%.0f"|format(c.euro_mp) }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="nota">Excluse din mediană (preț atipic) — nu au fost folosite în calculul statisticilor de mai jos.</p>
+  {% endif %}
+
+  <p>Mediană €/mp ajustat: <strong>{{ "%.0f"|format(analiza.stat_ajustat.mediana) }} €/mp</strong>
+     (min {{ "%.0f"|format(analiza.stat_ajustat.minim) }} – max {{ "%.0f"|format(analiza.stat_ajustat.maxim) }}, n={{ analiza.stat_ajustat.n }}).
+     Poziționare subiect: <strong>{{ "%+.1f"|format(analiza.pozitionare_pct) }}%</strong> față de mediană → <strong>{{ analiza.incadrare }}</strong>.</p>
+  <div class="caseta">
+    Preț de listare recomandat: <strong>{{ eur(analiza.pret_listare[0]) }} – {{ eur(analiza.pret_listare[1]) }}</strong>.
+    Preț de tranzacționare realist: <strong>{{ eur(analiza.pret_tranzactie[0]) }} – {{ eur(analiza.pret_tranzactie[1]) }}</strong>
+    (corecție anunț→tranzacție inclusă).
+  </div>
+
+  {% if narativ.faze %}
+  <h2>Plan de preț eșalonat pe {{ analiza.tinta_zile }} de zile</h2>
+  <table>
+    <tr><th>Fază</th><th>Zile</th><th>Preț listare</th><th>Obiectiv</th><th>Prag de decizie</th></tr>
+    {% for f in narativ.faze %}
+    <tr><td>{{ f.nume }}</td><td>{{ f.zile }}</td><td>{{ f.pret }}</td><td>{{ f.obiectiv }}</td><td>{{ f.prag }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {% if narativ.profiluri %}
+  <h2>Clientul țintă</h2>
+  {% for p in narativ.profiluri %}
+  <p><span class="eticheta">{{ p.eticheta }}</span> <strong>{{ p.titlu }}</strong></p>
+  <ul>{% for pct in p.puncte %}<li>{{ pct }}</li>{% endfor %}</ul>
+  {% endfor %}
+  {% endif %}
+
+  {% if narativ.investitie %}
+  <div class="caseta"><strong>Unghi de investiție:</strong> {{ narativ.investitie }}</div>
+  {% endif %}
+
+  {% if narativ.reguli %}
+  <h2>Reguli de execuție</h2>
+  <ul>{% for r in narativ.reguli %}<li>{{ r }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if narativ.anunt %}
+  <h2>Anexă — text de anunț gata de publicare</h2>
+  <div class="caseta">
+    <strong>Titlu:</strong> {{ narativ.anunt.titlu }}<br><br>
+    {{ narativ.anunt.descriere }}
+  </div>
+  {% endif %}
+
+  <p class="nota">Notă metodologică: comparabilele provin din prețuri <em>cerute</em> pe portaluri;
+    prețurile reale de tranzacție nu sunt publice la nivel de apartament în România — corecția
+    anunț→tranzacție aplicată este 4–8%. Surse consultate: {{ analiza.surse|join(", ") }}.
+    Document confidențial • Estimare analitică, nu evaluare autorizată ANEVAR.</p>
+</body>
+</html>
