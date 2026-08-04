@@ -61,6 +61,7 @@ from playwright.async_api import async_playwright
 from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from acp.connectors.base import ConnectorBase, ConnectorError
+from acp.extractie import extrage_incalzire, extrage_parcare, extrage_stare, extrage_structura
 from acp.modele import Comparabila, CriteriiCautare
 
 USER_AGENT = (
@@ -361,6 +362,9 @@ class OlxConnector(ConnectorBase):
         if compartimentare:
             dotari.append(compartimentare)
 
+        text = " ".join(filter(None, [(item.get("title") or ""), *dotari]))
+        stare, stare_incredere = extrage_stare(text)
+
         return Comparabila(
             sursa=self.name,
             url=url,
@@ -371,6 +375,11 @@ class OlxConnector(ConnectorBase):
             dotari=dotari,
             marcaj="activ",
             tip=tip,
+            structura=extrage_structura(text),
+            incalzire=extrage_incalzire(text),
+            stare=stare,
+            stare_incredere=stare_incredere,
+            parcare_tip=extrage_parcare(text, an),
         )
 
     @staticmethod

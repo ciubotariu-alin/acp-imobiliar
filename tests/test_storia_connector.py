@@ -229,6 +229,24 @@ def test_storia_parse_listing_fara_slug_url_none():
     assert comp.url is None
 
 
+def test_storia_populeaza_campuri_noi_din_slug_si_tags():
+    """structura/incalzire/stare/parcare_tip se extrag din slug + tags (nu există text vizibil)."""
+    connector = StoriaConnector()
+    item = {
+        "areaInSquareMeters": 60,
+        "totalPrice": {"value": 90000},
+        "floorNumber": None,
+        "transaction": "SELL",
+        "slug": "apartament-2-camere-renovat-caramida-centrala-proprie",
+        "tags": [{"value": "garaj subteran"}],
+    }
+    comp = connector._normalize_listing_to_comparabila(item)
+    assert comp.structura == "caramida"
+    assert comp.incalzire == "centrala_proprie"
+    assert comp.stare == "renovat"
+    assert comp.parcare_tip == "owned"
+
+
 # ---------- Search end-to-end (cu fixtura, fără Playwright real) ----------
 
 def test_storia_search_filtrează_după_suprafață(storia_html, monkeypatch):

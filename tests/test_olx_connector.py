@@ -265,6 +265,20 @@ def test_olx_parse_listing_include_compartimentare_in_dotari():
     assert "Decomandat" in comp.dotari
 
 
+def test_olx_populeaza_campuri_noi_din_title():
+    """structura/incalzire/stare/parcare_tip se extrag din title + dotari (compartimentare)."""
+    connector = OlxConnector()
+    item = {
+        "title": "Apartament renovat, caramida, centrala proprie, garaj subteran",
+        "params": [{"key": "m", "normalizedValue": "60"}],
+    }
+    comp = connector._normalize_listing_to_comparabila(item)
+    assert comp.structura == "caramida"
+    assert comp.incalzire == "centrala_proprie"
+    assert comp.stare == "renovat"
+    assert comp.parcare_tip == "owned"
+
+
 # ---------- Extragere camere din titlu (_extract_camere) ----------
 
 def test_extract_camere_numar_explicit_in_titlu():

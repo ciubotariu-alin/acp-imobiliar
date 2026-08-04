@@ -159,6 +159,24 @@ def test_imobiliare_parse_listing_fara_suprafata_returnează_none():
     assert comp is None
 
 
+def test_imobiliare_parse_listing_populeaza_campuri_noi_din_text():
+    """structura/incalzire/stare/parcare_tip se extrag din textul vizibil al elementului."""
+    connector = ImobiliareConnector()
+    html = (
+        '<article data-listing-id="10" data-item-price="90000" data-surface="60" '
+        'data-year="2015" data-status="sale" data-availability="available">'
+        '<a href="/oferta/test-10">x</a>'
+        "Apartament renovat, centrala proprie, caramida, garaj subteran"
+        "</article>"
+    )
+    comp = connector._normalize_listing_to_comparabila(html)
+    assert comp.structura == "caramida"
+    assert comp.incalzire == "centrala_proprie"
+    assert comp.stare == "renovat"
+    assert comp.stare_incredere == pytest.approx(0.7)
+    assert comp.parcare_tip == "owned"
+
+
 # ---------- Search end-to-end (cu fixtura, fără Playwright real) ----------
 
 def test_imobiliare_search_filtrează_după_suprafață(imobiliare_html, monkeypatch):
