@@ -15,6 +15,11 @@ from acp.analiza import analizeaza
 from acp.filtrare import filtreaza, dedup
 from acp.detalii import imbogateste_detalii
 from acp.cache_detalii import CacheDetalii
+from acp.cache_hashuri import CacheHashuri
+from acp.dedup_poze import confirma_si_dedup
+from acp.poze_fetch import construieste_fetch_poze, hashuri_din_urls
+from acp.connectors import detaliu_fetch
+from acp.connectors.imobiliare import USER_AGENT as UA_DETALIU
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +189,8 @@ class PipelineOrchestrator:
         return comparabile
 
     def deduplicate_and_analyze(self, subiect: Subiect, comparabile: list[Comparabila],
-                                imbogateste: bool = True, cache=None) -> Analiza:
+                                imbogateste: bool = True, cache=None,
+                                dedup_poze: bool = True) -> Analiza:
         """
         Deduplicate comparabile and generate analysis.
 
@@ -201,18 +207,25 @@ class PipelineOrchestrator:
         pe disc) înainte de analiză, astfel încât ajustările de dotări să se
         aplice pe date reale, nu pe presupunerea "card gol = nu are".
 
+        Când `dedup_poze` e True (default), comparabilele care supraviețuiesc
+        filtrării sunt verificate pe poze (dHash + Hamming) atât între ele
+        (duplicate cross-agenție), cât și față de subiect (dacă `subiect.url`
+        e setat), iar cele confirmate sunt excluse din setul trimis la analiză.
+
         Args:
             subiect: Subject property being analyzed
             comparabile: List of comparable properties from all connectors
             imbogateste: Whether to fetch and parse detail pages for survivors
             cache: Optional CacheDetalii instance (defaults to a new one)
+            dedup_poze: Whether to run photo-based dedup + subject exclusion
 
         Returns:
             Analiza: Complete analysis object with statistics, context, and recommendations
         """
+        vanzari = [c for c in comparabile if c.tip == "vanzare"]
+        survivors = filtreaza(subiect, dedup(vanzari))
+
         if imbogateste:
-            vanzari = [c for c in comparabile if c.tip == "vanzare"]
-            survivors = filtreaza(subiect, dedup(vanzari))
             fetchers = {
                 c.name: c.fetch_detaliu
                 for c in self.connectors
@@ -222,6 +235,22 @@ class PipelineOrchestrator:
                 cache = CacheDetalii()
             n = imbogateste_detalii(survivors, fetchers, cache)
             logger.info(f"Imbogatite {n}/{len(survivors)} comparabile cu detalii de pe pagina de detaliu")
+
+        if dedup_poze:
+            subiect_hashes: list[int] = []
+            if subiect.url:
+                _, poze_subiect = detaliu_fetch.fetch_detaliu(subiect.url, UA_DETALIU)
+                subiect_hashes = hashuri_din_urls(poze_subiect, UA_DETALIU)
+            fetch_poze = construieste_fetch_poze(UA_DETALIU, cache=CacheHashuri())
+            pastrate, dup_elim, subj_elim = confirma_si_dedup(
+                survivors, subiect, subiect_hashes, fetch_poze
+            )
+            elim = {id(c) for c in dup_elim} | {id(c) for c in subj_elim}
+            comparabile = [c for c in comparabile if id(c) not in elim]
+            logger.info(
+                f"Dedup poze: eliminate {len(dup_elim)} duplicate cross-agentie "
+                f"si {len(subj_elim)} instante ale subiectului"
+            )
 
         # Extract unique sources from comparabile for reporting
         surse = sorted({c.sursa for c in comparabile})
