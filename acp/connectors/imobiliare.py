@@ -308,6 +308,10 @@ class ImobiliareConnector(ConnectorBase):
             return None
         return href if href.startswith("http") else self.base_url + href
 
+    def fetch_detaliu(self, url: str) -> tuple[str | None, list[str]]:
+        from acp.connectors import detaliu_fetch
+        return detaliu_fetch.fetch_detaliu(url, USER_AGENT)
+
     def fetch_detaliu_text(self, url: str) -> str | None:
         from acp.connectors import detaliu_fetch
         return detaliu_fetch.fetch_detaliu_text(url, USER_AGENT)
