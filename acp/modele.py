@@ -53,6 +53,7 @@ class Comparabila(BaseModel):
     stare_incredere: float = 0.0      # 0-1; ajustarea de stare se aplică doar peste prag
     parcare_tip: str | None = None    # owned | resedinta | none
     ajustare_neta_mare: bool = False  # marcaj gardă anti-supra-ajustare (|net| > 0.15)
+    detalii_complete: bool = False    # True doar după fetch+parse reușit al paginii de detaliu
     ajustari: list[Ajustare] = []
 
     @computed_field

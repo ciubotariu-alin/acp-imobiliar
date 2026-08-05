@@ -5,7 +5,7 @@ Direcția: subiect − comparabila. Comparabila inferioară → ajustare pozitiv
 from __future__ import annotations
 
 from acp.modele import Subiect, Comparabila, Ajustare
-from acp.extractie import extrage_parcare
+from acp.extractie import extrage_parcare, KW_MOBILAT, KW_AC, KW_BALCON, KW_BOXA
 
 CAP_ETAJ = 0.05
 CAP_VECHIME = 0.10
@@ -18,11 +18,6 @@ PRAG_BRUT = 0.25
 _STRUCTURA_VAL = {"caramida": 0.02, "beton": 0.02, "bca": 0.0, "panou": -0.03}
 _INCALZIRE_VAL = {"centrala_proprie": 0.03, "centrala_bloc": 0.0, "termoficare": -0.02}
 _STARE_VAL = {"renovat": 0.10, "bun": 0.0, "gri": -0.05, "necesita_renovare": -0.15}
-
-_KW_BOXA = ["boxa", "boxă", "debara", "camara", "cămară"]
-_KW_MOBILAT = ["mobilat", "utilat"]
-_KW_AC = ["aer conditionat", "aer condiționat", "a/c", "aer cond", "clima"]
-_KW_BALCON = ["balcon", "terasa", "terasă", "logie"]
 
 
 def _plafon(x: float, cap: float) -> float:
@@ -79,7 +74,7 @@ def _are(dotari: list[str], kws: list[str]) -> bool:
 
 
 def _numara_ac(dotari: list[str]) -> int:
-    return sum(1 for d in dotari if any(k in d.lower() for k in _KW_AC))
+    return sum(1 for d in dotari if any(k in d.lower() for k in KW_AC))
 
 
 def _ajustare_parcare(subiect: Subiect, comp: Comparabila, valoare: float) -> Ajustare | None:
@@ -95,7 +90,9 @@ def _ajustare_parcare(subiect: Subiect, comp: Comparabila, valoare: float) -> Aj
 
 
 def _ajustare_boxa(subiect: Subiect, comp: Comparabila, valoare: float) -> Ajustare | None:
-    s, c = _are(subiect.dotari, _KW_BOXA), _are(comp.dotari, _KW_BOXA)
+    if not comp.detalii_complete:
+        return None
+    s, c = _are(subiect.dotari, KW_BOXA), _are(comp.dotari, KW_BOXA)
     if s and not c:
         return Ajustare(factor="boxa", valoare_abs=valoare,
                         motiv="Subiect cu boxă, comparabila fără")
@@ -106,7 +103,9 @@ def _ajustare_boxa(subiect: Subiect, comp: Comparabila, valoare: float) -> Ajust
 
 
 def _ajustare_mobilat(subiect: Subiect, comp: Comparabila) -> Ajustare | None:
-    s, c = _are(subiect.dotari, _KW_MOBILAT), _are(comp.dotari, _KW_MOBILAT)
+    if not comp.detalii_complete:
+        return None
+    s, c = _are(subiect.dotari, KW_MOBILAT), _are(comp.dotari, KW_MOBILAT)
     if s and not c:
         return Ajustare(factor="mobilat", procent=0.04,
                         motiv="Subiect mobilat/utilat, comparabila nu")
@@ -117,6 +116,8 @@ def _ajustare_mobilat(subiect: Subiect, comp: Comparabila) -> Ajustare | None:
 
 
 def _ajustare_ac(subiect: Subiect, comp: Comparabila) -> Ajustare | None:
+    if not comp.detalii_complete:
+        return None
     diff = _numara_ac(subiect.dotari) - _numara_ac(comp.dotari)
     procent = _plafon(diff * 0.01, 0.03)
     if procent == 0:
@@ -126,7 +127,9 @@ def _ajustare_ac(subiect: Subiect, comp: Comparabila) -> Ajustare | None:
 
 
 def _ajustare_balcon(subiect: Subiect, comp: Comparabila) -> Ajustare | None:
-    s, c = _are(subiect.dotari, _KW_BALCON), _are(comp.dotari, _KW_BALCON)
+    if not comp.detalii_complete:
+        return None
+    s, c = _are(subiect.dotari, KW_BALCON), _are(comp.dotari, KW_BALCON)
     if s and not c:
         return Ajustare(factor="balcon", procent=0.03,
                         motiv="Subiect cu balcon, comparabila fără")

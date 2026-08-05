@@ -141,6 +141,8 @@ la el pentru rularea curentă.
 
 **Ajustarea comparabilelor (Task 11):** `analizeaza()` apelează automat `aplica_ajustari()`, care aduce fiecare comparabilă la nivelul subiectului (etaj, vechime, mărime, dotări, parcare, structură, încălzire, stare). Direcția: subiect − comparabilă. Comparabilele supra-ajustate (ajustare brută > 25%) sunt excluse; cele cu ajustare netă > 15% rămân dar sunt marcate (`ajustare_neta_mare`) — semnalează-le în raport.
 
+**Îmbogățire cu detalii (Task 12):** înainte de ajustare, orchestratorul deschide pagina de detaliu a fiecărei comparabile relevante (post-filtrare) și extrage dotările reale (structură, încălzire, stare, parcare, mobilat/A/C/balcon/boxă), setând `detalii_complete=True`. Ajustările de dotări se aplică DOAR pe comparabilele îmbogățite — o comparabilă al cărei detaliu n-a putut fi citit rămâne în analiză, dar fără ajustare de dotări (nu primește credit fals). Fetch secvențial, cu cache pe disc (TTL 1 zi). Toggle: `deduplicate_and_analyze(..., imbogateste=False)` sare peste pas pentru viteză (doar etaj/suprafață/vechime credibile).
+
 **Valoarea parcării e parametru:** `analizeaza(..., valoare_parcare_eur=..., valoare_boxa_eur=...)`. Parcarea variază pe cartier și complex — setează valoarea potrivită pieței subiectului (default conservator €8.000 parcare / €2.000 boxă). La blocuri vechi cu loc de reședință, parcarea nu are valoare de capital (ajustare €0).
 
 **Validare agent:**

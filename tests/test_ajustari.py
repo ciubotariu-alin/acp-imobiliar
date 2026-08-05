@@ -117,21 +117,21 @@ def test_parcare_comparabila_owned_subiect_fara():
 
 def test_boxa_pe_diferenta_dotari():
     s = _subiect(dotari=["boxă", "AC"])
-    c = _comp(dotari=["AC"])
+    c = _comp(dotari=["AC"], detalii_complete=True)
     a = _factor(calculeaza_ajustari(s, c, valoare_boxa_eur=2000.0), "boxa")
     assert a.valoare_abs == 2000.0
 
 
 def test_mobilat_procent():
     s = _subiect(dotari=["mobilat", "utilat"])
-    c = _comp(dotari=[])
+    c = _comp(dotari=[], detalii_complete=True)
     a = _factor(calculeaza_ajustari(s, c), "mobilat")
     assert round(a.procent, 4) == 0.04
 
 
 def test_ac_pe_numar_de_unitati_plafonat():
     s = _subiect(dotari=["aer condiționat", "aer condiționat", "aer condiționat", "aer condiționat"])
-    c = _comp(dotari=[])
+    c = _comp(dotari=[], detalii_complete=True)
     a = _factor(calculeaza_ajustari(s, c), "ac")
     # 4 unități * 0.01 = 0.04 → plafon 0.03
     assert round(a.procent, 4) == 0.03
@@ -139,7 +139,7 @@ def test_ac_pe_numar_de_unitati_plafonat():
 
 def test_balcon_procent():
     s = _subiect(dotari=["balcon"])
-    c = _comp(dotari=[])
+    c = _comp(dotari=[], detalii_complete=True)
     a = _factor(calculeaza_ajustari(s, c), "balcon")
     assert round(a.procent, 4) == 0.03
 
@@ -226,7 +226,7 @@ def test_garda_marcheaza_ajustare_neta_mare_dar_pastreaza():
     # net > 0.15 dar brut <= 0.25: vechime +0.10 + etaj +0.05 = net 0.15 brut 0.15
     # facem net 0.16: vechime +0.10, structura +0.05 (caramida vs panou), balcon +0.03 = 0.18
     s = _subiect(an=2020, structura="caramida", dotari=["balcon"])
-    c = _comp(an=2010, structura="panou", dotari=[], pret_eur=100000.0)
+    c = _comp(an=2010, structura="panou", dotari=[], detalii_complete=True, pret_eur=100000.0)
     pastrate, excluse = aplica_ajustari(s, [c])
     assert len(pastrate) == 1
     assert pastrate[0].ajustare_neta_mare is True
@@ -238,3 +238,18 @@ def test_garda_ignora_comparabila_fara_pret():
     pastrate, excluse = aplica_ajustari(s, [c])
     assert len(pastrate) == 1
     assert pastrate[0].ajustare_neta_mare is False
+
+
+def test_dotari_fara_detalii_complete_nu_ajusteaza():
+    # subiect are mobilat/AC/balcon/boxă; comparabila fără detalii → nicio ajustare de dotări
+    s = _subiect(dotari=["mobilat", "aer condiționat", "balcon", "boxă"])
+    c = _comp(dotari=[], detalii_complete=False)
+    ajust = calculeaza_ajustari(s, c)
+    for factor in ("mobilat", "ac", "balcon", "boxa"):
+        assert _factor(ajust, factor) is None
+
+
+def test_dotari_cu_detalii_complete_ajusteaza():
+    s = _subiect(dotari=["mobilat"])
+    c = _comp(dotari=[], detalii_complete=True)
+    assert _factor(calculeaza_ajustari(s, c), "mobilat") is not None

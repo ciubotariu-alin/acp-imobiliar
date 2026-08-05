@@ -76,3 +76,35 @@ def test_parcare_resedinta_wins_over_negation():
 def test_parcare_generic_no_info_not_masked():
     """Regression: bare 'fără mențiune' (generic no-info) should not mask explicit owned."""
     assert extrage_parcare("apartament fără mențiune despre încălzire, are parcare proprie") == "owned"
+
+
+def test_extrage_dotari_detecteaza_etichete_canonice():
+    from acp.extractie import extrage_dotari
+    text = "Apartament mobilat, aer condiționat, 2 balcoane, boxă la subsol"
+    d = extrage_dotari(text)
+    assert "mobilat" in d
+    assert "aer condiționat" in d
+    assert "balcon" in d
+    assert "boxă" in d
+
+
+def test_extrage_dotari_gol_cand_lipsesc():
+    from acp.extractie import extrage_dotari
+    assert extrage_dotari("apartament 2 camere, etaj 3") == []
+
+
+def test_extrage_dotari_utilat_conteaza_ca_mobilat():
+    from acp.extractie import extrage_dotari
+    # KW_MOBILAT = ["mobilat", "utilat"] → eticheta canonică "mobilat"
+    assert "mobilat" in extrage_dotari("complet utilat")
+
+
+def test_extrage_etaje_total_din_regim_inaltime():
+    from acp.extractie import extrage_etaje_total
+    assert extrage_etaje_total("Regim înălțime: P+8E") == 8
+    assert extrage_etaje_total("bloc P+4E cu lift") == 4
+
+
+def test_extrage_etaje_total_lipsa():
+    from acp.extractie import extrage_etaje_total
+    assert extrage_etaje_total("apartament fără mențiune de regim") is None

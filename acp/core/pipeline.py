@@ -12,6 +12,9 @@ from acp.connectors.fetch_connectors import (
 )
 from acp.modele import Subiect, CriteriiCautare, Comparabila, Analiza
 from acp.analiza import analizeaza
+from acp.filtrare import filtreaza, dedup
+from acp.detalii import imbogateste_detalii
+from acp.cache_detalii import CacheDetalii
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +183,8 @@ class PipelineOrchestrator:
         logger.info(f"fetch_comparabile_paralel aggregated {len(comparabile)} comparabile from all connectors")
         return comparabile
 
-    def deduplicate_and_analyze(self, subiect: Subiect, comparabile: list[Comparabila]) -> Analiza:
+    def deduplicate_and_analyze(self, subiect: Subiect, comparabile: list[Comparabila],
+                                imbogateste: bool = True, cache=None) -> Analiza:
         """
         Deduplicate comparabile and generate analysis.
 
@@ -191,13 +195,34 @@ class PipelineOrchestrator:
         - Market context calculation
         - Price recommendations
 
+        When `imbogateste` is True (default), comparabilele care supraviețuiesc
+        filtrării (`filtreaza(subiect, dedup(...))`) sunt îmbogățite cu date de
+        pe pagina lor de detaliu (Playwright secvențial, per-conector, cu cache
+        pe disc) înainte de analiză, astfel încât ajustările de dotări să se
+        aplice pe date reale, nu pe presupunerea "card gol = nu are".
+
         Args:
             subiect: Subject property being analyzed
             comparabile: List of comparable properties from all connectors
+            imbogateste: Whether to fetch and parse detail pages for survivors
+            cache: Optional CacheDetalii instance (defaults to a new one)
 
         Returns:
             Analiza: Complete analysis object with statistics, context, and recommendations
         """
+        if imbogateste:
+            vanzari = [c for c in comparabile if c.tip == "vanzare"]
+            survivors = filtreaza(subiect, dedup(vanzari))
+            fetchers = {
+                c.name: c.fetch_detaliu_text
+                for c in self.connectors
+                if hasattr(c, "fetch_detaliu_text")
+            }
+            if cache is None:
+                cache = CacheDetalii()
+            n = imbogateste_detalii(survivors, fetchers, cache)
+            logger.info(f"Imbogatite {n}/{len(survivors)} comparabile cu detalii de pe pagina de detaliu")
+
         # Extract unique sources from comparabile for reporting
         surse = sorted({c.sursa for c in comparabile})
         logger.info(f"deduplicate_and_analyze processing {len(comparabile)} comparabile from {len(surse)} sources")

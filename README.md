@@ -41,6 +41,8 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run python exemple/demo.py
   ↓
 [4] FILTRARE & DEDUP (outliers, cross-portal)
   ↓
+[4.5] ÎMBOGĂȚIRE CU DETALII (acp/detalii.py + acp/cache_detalii.py: structură, dotări din pagina de detaliu; cache `.cache/detalii` TTL 1 zi; toggle `imbogateste`)
+  ↓
 [5] ANALIZĂ (€/mp, statistici, poziționare)
   ↓
 [6] NARATIV (agent: 20 de ani, strategie N zile, text anunț)

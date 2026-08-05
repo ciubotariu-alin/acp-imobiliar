@@ -5,6 +5,8 @@ Nu fabricăm valoare din limbaj de marketing.
 """
 from __future__ import annotations
 
+import re
+
 _STRUCTURA = [
     ("caramida", ["caramida", "cărămidă"]),
     ("panou", ["panou", "prefabricat", "prefab"]),
@@ -80,3 +82,31 @@ def extrage_parcare(text: str, an: int | None = None) -> str | None:
             return "resedinta"
         return None  # ambiguu, vechime neconcludentă
     return "none"
+
+
+# Cuvinte-cheie de dotări — sursă unică; acp/ajustari.py le importă (evită drift).
+KW_MOBILAT = ["mobilat", "utilat"]
+KW_AC = ["aer conditionat", "aer condiționat", "a/c", "aer cond", "clima"]
+KW_BALCON = ["balcon", "balcoane", "terasa", "terasă", "logie"]
+KW_BOXA = ["boxa", "boxă", "debara", "camara", "cămară"]
+
+_DOTARI_ETICHETE = [
+    ("mobilat", KW_MOBILAT),
+    ("aer condiționat", KW_AC),
+    ("balcon", KW_BALCON),
+    ("boxă", KW_BOXA),
+]
+
+_ETAJE_RE = re.compile(r"P\s*\+\s*(\d+)\s*E", re.IGNORECASE)
+
+
+def extrage_dotari(text: str) -> list[str]:
+    """Detectează dotările din text → etichete canonice care conțin cuvintele-cheie KW_*."""
+    t = text.lower()
+    return [eticheta for eticheta, kws in _DOTARI_ETICHETE if any(k in t for k in kws)]
+
+
+def extrage_etaje_total(text: str) -> int | None:
+    """Parsează regimul de înălțime „P+NE" → N (nr. etaje peste parter)."""
+    m = _ETAJE_RE.search(text)
+    return int(m.group(1)) if m else None
