@@ -226,7 +226,7 @@ def test_garda_marcheaza_ajustare_neta_mare_dar_pastreaza():
     # net > 0.15 dar brut <= 0.25: vechime +0.10 + etaj +0.05 = net 0.15 brut 0.15
     # facem net 0.16: vechime +0.10, structura +0.05 (caramida vs panou), balcon +0.03 = 0.18
     s = _subiect(an=2020, structura="caramida", dotari=["balcon"])
-    c = _comp(an=2010, structura="panou", dotari=[], pret_eur=100000.0)
+    c = _comp(an=2010, structura="panou", dotari=[], detalii_complete=True, pret_eur=100000.0)
     pastrate, excluse = aplica_ajustari(s, [c])
     assert len(pastrate) == 1
     assert pastrate[0].ajustare_neta_mare is True
