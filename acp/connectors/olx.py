@@ -173,6 +173,7 @@ class OlxConnector(ConnectorBase):
             item_dict = self._as_item_dict(item)
             if item_dict is None or self._extract_camere(item_dict) != criterii.camere:
                 continue
+            comp.camere = criterii.camere
             comparabile.append(comp)
         return comparabile
 
@@ -423,6 +424,10 @@ class OlxConnector(ConnectorBase):
         if url_path:
             return self.base_url + url_path
         return None
+
+    def fetch_detaliu(self, url: str) -> tuple[str | None, list[str]]:
+        from acp.connectors import detaliu_fetch
+        return detaliu_fetch.fetch_detaliu(url, USER_AGENT)
 
     def fetch_detaliu_text(self, url: str) -> str | None:
         from acp.connectors import detaliu_fetch

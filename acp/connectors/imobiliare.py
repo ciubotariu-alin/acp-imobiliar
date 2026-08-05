@@ -111,6 +111,7 @@ class ImobiliareConnector(ConnectorBase):
                 continue
             if comp.supr_totala < criterii.supr_min or comp.supr_totala > criterii.supr_max:
                 continue
+            comp.camere = criterii.camere
             comparabile.append(comp)
         return comparabile
 
@@ -306,6 +307,10 @@ class ImobiliareConnector(ConnectorBase):
         if not href:
             return None
         return href if href.startswith("http") else self.base_url + href
+
+    def fetch_detaliu(self, url: str) -> tuple[str | None, list[str]]:
+        from acp.connectors import detaliu_fetch
+        return detaliu_fetch.fetch_detaliu(url, USER_AGENT)
 
     def fetch_detaliu_text(self, url: str) -> str | None:
         from acp.connectors import detaliu_fetch
