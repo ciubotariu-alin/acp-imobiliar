@@ -53,7 +53,7 @@
     <tr class="subiect"><td>Subiect (anunțul tău)</td><td>{{ subiect.supr_totala }} mp</td><td>{{ subiect.etaj or "—" }}</td><td>{{ subiect.an or "—" }}</td><td>{{ eur(subiect.pret_eur) }}</td><td>{{ "%.0f"|format(subiect.euro_mp) }}</td><td>—</td></tr>
     {% for c in analiza.comparabile %}
     <tr>
-      <td>{{ c.sursa }}{% if c.marcaj != "activ" %} ({{ c.marcaj }}){% endif %}</td>
+      <td>{% if c.url %}<a href="{{ c.url }}">{{ c.sursa }}</a>{% else %}{{ c.sursa }}{% endif %}{% if c.marcaj != "activ" %} ({{ c.marcaj }}){% endif %}</td>
       <td>{{ c.supr_totala }} mp</td><td>{{ c.etaj or "—" }}</td><td>{{ c.an or "—" }}</td>
       <td>{% if c.pret_eur %}{{ eur(c.pret_eur) }}{% else %}listat{% endif %}</td>
       <td>{% if c.euro_mp %}{{ "%.0f"|format(c.euro_mp) }}{% else %}—{% endif %}</td>
@@ -68,7 +68,7 @@
     <tr><th>Sursă</th><th>Supr.</th><th>Preț</th><th>€/mp</th></tr>
     {% for c in analiza.outlieri %}
     <tr>
-      <td>{{ c.sursa }}{% if c.marcaj != "activ" %} ({{ c.marcaj }}){% endif %}</td>
+      <td>{% if c.url %}<a href="{{ c.url }}">{{ c.sursa }}</a>{% else %}{{ c.sursa }}{% endif %}{% if c.marcaj != "activ" %} ({{ c.marcaj }}){% endif %}</td>
       <td>{{ c.supr_totala }} mp</td>
       <td>{% if c.pret_eur %}{{ eur(c.pret_eur) }}{% else %}listat{% endif %}</td>
       <td>{% if c.euro_mp %}{{ "%.0f"|format(c.euro_mp) }}{% else %}—{% endif %}</td>
