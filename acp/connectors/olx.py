@@ -428,3 +428,7 @@ class OlxConnector(ConnectorBase):
         if url_path:
             return self.base_url + url_path
         return None
+
+    def fetch_detaliu_text(self, url: str) -> str | None:
+        from acp.connectors import detaliu_fetch
+        return detaliu_fetch.fetch_detaliu_text(url, USER_AGENT)

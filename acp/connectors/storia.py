@@ -384,3 +384,7 @@ class StoriaConnector(ConnectorBase):
         if not slug:
             return None
         return f"{self.base_url}/ro/oferta/{slug}"
+
+    def fetch_detaliu_text(self, url: str) -> str | None:
+        from acp.connectors import detaliu_fetch
+        return detaliu_fetch.fetch_detaliu_text(url, USER_AGENT)
