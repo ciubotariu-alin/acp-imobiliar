@@ -214,9 +214,9 @@ class PipelineOrchestrator:
             vanzari = [c for c in comparabile if c.tip == "vanzare"]
             survivors = filtreaza(subiect, dedup(vanzari))
             fetchers = {
-                c.name: c.fetch_detaliu_text
+                c.name: c.fetch_detaliu
                 for c in self.connectors
-                if hasattr(c, "fetch_detaliu_text")
+                if hasattr(c, "fetch_detaliu")
             }
             if cache is None:
                 cache = CacheDetalii()

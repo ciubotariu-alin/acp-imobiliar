@@ -8,18 +8,22 @@ def _c(sursa="imobiliare.ro", url="https://imobiliare.ro/x", an=2015):
 
 def test_imbogateste_populeaza_si_seteaza_flag():
     c = _c()
-    fetchers = {"imobiliare.ro": lambda url: "structură beton, mobilat, garaj subteran"}
+    fetchers = {"imobiliare.ro": lambda url: (
+        "structură beton, mobilat, garaj subteran",
+        ["https://imobiliare.ro/p1.jpg", "https://imobiliare.ro/p2.jpg"],
+    )}
     n = imbogateste_detalii([c], fetchers)
     assert n == 1
     assert c.detalii_complete is True
     assert c.structura == "beton"
     assert "mobilat" in c.dotari
     assert c.parcare_tip == "owned"
+    assert c.poze_urls == ["https://imobiliare.ro/p1.jpg", "https://imobiliare.ro/p2.jpg"]
 
 
 def test_imbogateste_fetch_esuat_lasa_flag_false():
     c = _c()
-    fetchers = {"imobiliare.ro": lambda url: None}
+    fetchers = {"imobiliare.ro": lambda url: (None, [])}
     n = imbogateste_detalii([c], fetchers)
     assert n == 0
     assert c.detalii_complete is False
@@ -27,14 +31,14 @@ def test_imbogateste_fetch_esuat_lasa_flag_false():
 
 def test_imbogateste_sursa_fara_fetcher_sarita():
     c = _c(sursa="publi24.ro")
-    n = imbogateste_detalii([c], {"imobiliare.ro": lambda url: "beton"})
+    n = imbogateste_detalii([c], {"imobiliare.ro": lambda url: ("beton", [])})
     assert n == 0
     assert c.detalii_complete is False
 
 
 def test_imbogateste_fara_url_sarita():
     c = _c(url=None)
-    n = imbogateste_detalii([c], {"imobiliare.ro": lambda url: "beton"})
+    n = imbogateste_detalii([c], {"imobiliare.ro": lambda url: ("beton", [])})
     assert n == 0
 
 
@@ -44,7 +48,7 @@ def test_imbogateste_foloseste_cache_evita_fetch(tmp_path):
     c = _c()
     cache.set(c.url, {"structura": "caramida", "incalzire": None, "stare": None,
                       "stare_incredere": 0.0, "parcare_tip": None, "dotari": [],
-                      "etaje_total": None})
+                      "etaje_total": None, "poze_urls": ["https://imobiliare.ro/p9.jpg"]})
 
     def _raise(url):
         raise AssertionError("fetcher nu trebuia apelat (cache hit)")
@@ -52,6 +56,7 @@ def test_imbogateste_foloseste_cache_evita_fetch(tmp_path):
     n = imbogateste_detalii([c], {"imobiliare.ro": _raise}, cache=cache)
     assert n == 1
     assert c.structura == "caramida"
+    assert c.poze_urls == ["https://imobiliare.ro/p9.jpg"]
     assert c.detalii_complete is True
 
 

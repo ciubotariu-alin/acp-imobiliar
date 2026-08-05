@@ -26,15 +26,15 @@ def parseaza_detaliu(text: str, an: int | None = None) -> dict:
 
 def imbogateste_detalii(
     comparabile: list[Comparabila],
-    fetchers: dict[str, Callable[[str], str | None]],
+    fetchers: dict[str, Callable[[str], tuple[str | None, list[str]]]],
     cache=None,
 ) -> int:
-    """Îmbogățește comparabilele cu date din pagina de detaliu.
+    """Îmbogățește comparabilele cu date + URL-uri de poze din pagina de detaliu.
 
     Pentru fiecare comparabilă cu `url` și o sursă prezentă în `fetchers`:
-    - încearcă cache-ul; la miss apelează fetcher-ul (text) și parsează;
-    - populează câmpurile și setează `detalii_complete=True`.
-    Fetch eșuat (None) sau sursă fără fetcher → sărită (detalii_complete rămâne False).
+    - încearcă cache-ul; la miss apelează fetcher-ul `(text, poze_urls)` și parsează;
+    - populează câmpurile (inclusiv `poze_urls`) și setează `detalii_complete=True`.
+    Fetch eșuat (text None) sau sursă fără fetcher → sărită (detalii_complete rămâne False).
     Întoarce numărul de comparabile îmbogățite.
     """
     n = 0
@@ -43,10 +43,11 @@ def imbogateste_detalii(
             continue
         campuri = cache.get(c.url) if cache is not None else None
         if campuri is None:
-            text = fetchers[c.sursa](c.url)
+            text, poze_urls = fetchers[c.sursa](c.url)
             if not text:
                 continue
             campuri = parseaza_detaliu(text, c.an)
+            campuri["poze_urls"] = poze_urls
             if cache is not None:
                 cache.set(c.url, campuri)
         for cheie, valoare in campuri.items():
