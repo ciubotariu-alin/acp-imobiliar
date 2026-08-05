@@ -29,6 +29,7 @@ class Subiect(BaseModel):
     coordonate: tuple[float, float] | None = None
     parcare: str | None = None
     tip_vanzator: str | None = None
+    url: str | None = None        # linkul anunțului subiect (agentul îl dă la pasul [0])
 
     @computed_field
     @property
@@ -39,6 +40,8 @@ class Subiect(BaseModel):
 class Comparabila(BaseModel):
     sursa: str
     url: str | None = None
+    camere: int | None = None     # pentru pre-filtrul de duplicat (connectorii îl populează)
+    poze_urls: list[str] = []     # URL-uri de poze (galerie), populate la îmbogățire
     pret_eur: float | None = None
     supr_totala: float
     etaj: int | None = None
