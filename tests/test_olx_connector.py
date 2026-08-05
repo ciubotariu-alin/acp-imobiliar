@@ -380,28 +380,25 @@ def test_olx_search_gol_dacă_niciun_anunț_nu_se_potrivește(olx_html, monkeypa
     assert result == []
 
 
-def test_olx_search_fallback_zona_necunoscuta(olx_html, monkeypatch):
-    """Dacă URL-ul cu segment `q-{zona}` întoarce 0 anunțuri (termen fără
-    potriviri), search trebuie să reîncerce fără segmentul de zonă și să
-    întoarcă rezultatele de la nivel de oraș."""
+def test_olx_search_zona_necunoscuta_fara_fallback(olx_html, monkeypatch):
+    """Dacă URL-ul cu segment `q-{zona}` întoarce 0 anunțuri, search NU mai
+    reîncearcă pe tot orașul — un fallback city-wide ar aduce comparabile din
+    alte zone, poluând mediana. Întoarce listă goală."""
     connector = OlxConnector()
     calls = []
 
     async def fake_fetch(url):
         calls.append(url)
-        if "q-vistei" in url:
-            return "<html><body>0 rezultate</body></html>"
-        return olx_html
+        return "<html><body>0 rezultate</body></html>"
 
     monkeypatch.setattr(connector, "_fetch_html_with_retry", fake_fetch)
 
     criterii = criterii_test(camere=2, supr_min=60, supr_max=80, zona="Viștei")
     result = connector.search(criterii)
 
-    assert len(calls) == 2  # prima încercare (cu zonă) + fallback (fără zonă)
+    assert len(calls) == 1  # doar căutarea cu zonă; fără fallback city-wide
     assert "q-vistei" in calls[0]
-    assert "q-vistei" not in calls[1]
-    assert len(result) > 0
+    assert result == []
 
 
 def test_olx_search_fara_zona_nu_face_fallback(olx_html, monkeypatch):
