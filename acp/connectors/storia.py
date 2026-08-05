@@ -149,16 +149,10 @@ class StoriaConnector(ConnectorBase):
         html = await self._fetch_html_with_retry(url)
         items = self._extract_listing_items(html)
 
-        zona_slug = self._slugify(criterii.zona)
-        if not items and zona_slug:
-            # Zona (ex. o stradă) nu corespunde taxonomiei sector/cartier a
-            # storia.ro -> fallback determinist la căutarea pe tot orașul,
-            # ca să nu întoarcem o listă goală doar din cauza unui slug
-            # de locație neacceptat.
-            fallback_url = self._build_search_url(criterii, include_zona=False)
-            if fallback_url != url:
-                html = await self._fetch_html_with_retry(fallback_url)
-                items = self._extract_listing_items(html)
+        # Fără fallback city-wide: dacă slug-ul de zonă nu e recunoscut de
+        # taxonomia storia.ro și întoarce 0 anunțuri, NU căutăm pe tot orașul —
+        # ar aduce comparabile din alte zone (ex. Iuliu Maniu în loc de
+        # Colentina), poluând mediana. Preferăm 0 comparabile din altă zonă.
 
         comparabile: list[Comparabila] = []
         for item in items:

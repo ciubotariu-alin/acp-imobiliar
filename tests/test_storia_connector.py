@@ -316,28 +316,25 @@ def test_storia_search_gol_dacă_niciun_anunț_nu_se_potrivește(storia_html, mo
     assert result == []
 
 
-def test_storia_search_fallback_zona_necunoscuta(storia_html, monkeypatch):
-    """Dacă URL-ul cu zonă întoarce 0 anunțuri (zonă neacceptată de taxonomia
-    storia.ro), search trebuie să reîncerce fără segmentul de zonă și să
-    întoarcă rezultatele de la nivel de oraș."""
+def test_storia_search_zona_necunoscuta_fara_fallback(storia_html, monkeypatch):
+    """Dacă URL-ul cu zonă întoarce 0 anunțuri, search NU mai reîncearcă pe tot
+    orașul — un fallback city-wide ar aduce comparabile din alte zone (ex.
+    Iuliu Maniu în loc de Colentina), poluând mediana. Întoarce listă goală."""
     connector = StoriaConnector()
     calls = []
 
     async def fake_fetch(url):
         calls.append(url)
-        if "vistei" in url:
-            return "<html><body>pagina 404, fara anunturi</body></html>"
-        return storia_html
+        return "<html><body>pagina 404, fara anunturi</body></html>"
 
     monkeypatch.setattr(connector, "_fetch_html_with_retry", fake_fetch)
 
     criterii = criterii_test(camere=2, supr_min=60, supr_max=80, zona="Viștei")
     result = connector.search(criterii)
 
-    assert len(calls) == 2  # prima încercare (cu zonă) + fallback (fără zonă)
+    assert len(calls) == 1  # doar căutarea cu zonă; fără fallback city-wide
     assert "vistei" in calls[0]
-    assert "vistei" not in calls[1]
-    assert len(result) > 0
+    assert result == []
 
 
 def test_storia_search_fara_zona_nu_face_fallback(storia_html, monkeypatch):

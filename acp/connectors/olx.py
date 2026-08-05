@@ -153,20 +153,15 @@ class OlxConnector(ConnectorBase):
     # ---------- orchestrare async ----------
 
     async def _search_async(self, criterii: CriteriiCautare) -> list[Comparabila]:
-        """Construiește URL-ul, navighează (cu retry, cu fallback de zonă) și parsează."""
+        """Construiește URL-ul, navighează (cu retry) și parsează."""
         url = self._build_search_url(criterii)
         html = await self._fetch_html_with_retry(url)
         items = self._extract_listing_items(html)
 
-        zona_slug = self._slugify(criterii.zona)
-        if not items and zona_slug:
-            # Termenul de zonă (căutat full-text via `q-{slug}`) nu are nicio
-            # potrivire -> fallback determinist la căutarea pe tot orașul, ca
-            # să nu pierdem toate rezultatele din cauza unui termen neacceptat.
-            fallback_url = self._build_search_url(criterii, include_zona=False)
-            if fallback_url != url:
-                html = await self._fetch_html_with_retry(fallback_url)
-                items = self._extract_listing_items(html)
+        # Fără fallback city-wide: dacă termenul de zonă (`q-{slug}`) nu are
+        # potriviri și întoarce 0 anunțuri, NU căutăm pe tot orașul — ar aduce
+        # comparabile din alte zone, poluând mediana. Preferăm 0 comparabile
+        # din altă zonă.
 
         comparabile: list[Comparabila] = []
         for item in items:
