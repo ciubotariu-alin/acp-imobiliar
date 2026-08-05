@@ -241,9 +241,16 @@ class PipelineOrchestrator:
             if subiect.url:
                 _, poze_subiect = detaliu_fetch.fetch_detaliu(subiect.url, UA_DETALIU)
                 subiect_hashes = hashuri_din_urls(poze_subiect, UA_DETALIU)
+            fallback_metadata = subiect.url is None
+            if subiect.url and not subiect_hashes:
+                logger.warning(
+                    "Subiect are url dar fetch-ul pozelor a esuat — sar excluderea "
+                    "subiectului (fara fallback pe metadata)"
+                )
             fetch_poze = construieste_fetch_poze(UA_DETALIU, cache=CacheHashuri())
             pastrate, dup_elim, subj_elim = confirma_si_dedup(
-                survivors, subiect, subiect_hashes, fetch_poze
+                survivors, subiect, subiect_hashes, fetch_poze,
+                fallback_metadata_subiect=fallback_metadata,
             )
             elim = {id(c) for c in dup_elim} | {id(c) for c in subj_elim}
             comparabile = [c for c in comparabile if id(c) not in elim]

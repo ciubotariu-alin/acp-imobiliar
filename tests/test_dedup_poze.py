@@ -113,3 +113,17 @@ def test_fallback_fara_subiect_hashes_exclude_pe_metadata():
     pastrate, dup, subj = confirma_si_dedup([a], subiect, [], _fetch_boom)
     assert subj == [a]
     assert pastrate == []
+
+
+def test_url_esuat_fara_fallback_pastreaza_comparabila():
+    a = _c("imobiliare.ro", 108000, 59, etaj=2, camere=2); a.url = "a"
+    subiect = Subiect(pret_eur=108000, supr_totala=59, camere=2, etaj=2)
+
+    def _fetch_boom(c):
+        raise AssertionError("nu descarcam poze cand fallback e dezactivat si nu avem hash-uri")
+
+    pastrate, dup, subj = confirma_si_dedup(
+        [a], subiect, [], _fetch_boom, fallback_metadata_subiect=False
+    )
+    assert subj == []
+    assert pastrate == [a]

@@ -21,7 +21,7 @@ def dhash(imagine_bytes: bytes, hash_size: int = 8) -> int | None:
         )
     except Exception:
         return None
-    pixels = list(img.getdata())
+    pixels = list(img.tobytes())
     latime = hash_size + 1
     bits = 0
     for rand in range(hash_size):

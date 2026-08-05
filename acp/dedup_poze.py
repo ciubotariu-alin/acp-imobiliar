@@ -60,14 +60,18 @@ def confirma_si_dedup(
     subiect_hashes: list[int],
     fetch_poze: Callable[[Comparabila], list[int]],
     prag_hamming: int = 8,
+    fallback_metadata_subiect: bool = True,
 ) -> tuple[list[Comparabila], list[Comparabila], list[Comparabila]]:
     """Întoarce (pastrate, duplicate_eliminate, subiect_eliminate).
 
     - Descarcă hash-uri (via `fetch_poze`) DOAR pentru comparabilele candidate
       (față de subiect sau față de altă comparabilă). Restul rămân neatinse.
     - Comparabilă care se potrivește pe metadata cu subiectul ȘI împarte o poză
-      cu `subiect_hashes` → subiect_eliminate. Fără `subiect_hashes` → excludere
-      doar pe metadata (fallback), fără descărcare de poze.
+      cu `subiect_hashes` → subiect_eliminate. Fără `subiect_hashes`, comportamentul
+      depinde de `fallback_metadata_subiect`: True (date manuale, fără url de
+      subiect) → excludere doar pe metadata (fallback), fără descărcare de poze;
+      False (un url a fost dat dar nu a produs hash-uri, de ex. fetch eșuat
+      tranzitoriu) → comparabila e PĂSTRATĂ, nu excludem agresiv doar pe metadata.
     - Două candidate care împart o poză → același apartament; se păstrează prima
       văzută, cealaltă în duplicate_eliminate.
     """
@@ -86,8 +90,12 @@ def confirma_si_dedup(
             ramase.append(c)
             continue
         if not subiect_hashes:
-            # Fallback: fără poze de subiect, excludem pe metadata (risc mic).
-            subiect_eliminate.append(c)
+            if fallback_metadata_subiect:
+                # Fallback: date manuale (fără url), excludem pe metadata (risc mic).
+                subiect_eliminate.append(c)
+            else:
+                # Url dat dar fetch-ul a eșuat: NU excludem agresiv doar pe metadata.
+                ramase.append(c)
             continue
         if _poze_se_potrivesc(hashes_pentru(c), subiect_hashes, prag_hamming):
             subiect_eliminate.append(c)
