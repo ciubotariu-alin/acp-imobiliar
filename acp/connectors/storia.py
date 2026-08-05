@@ -164,6 +164,7 @@ class StoriaConnector(ConnectorBase):
             item_dict = self._as_item_dict(item)
             if item_dict is None or self._extract_camere(item_dict) != criterii.camere:
                 continue
+            comp.camere = criterii.camere
             comparabile.append(comp)
         return comparabile
 

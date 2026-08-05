@@ -111,6 +111,7 @@ class ImobiliareConnector(ConnectorBase):
                 continue
             if comp.supr_totala < criterii.supr_min or comp.supr_totala > criterii.supr_max:
                 continue
+            comp.camere = criterii.camere
             comparabile.append(comp)
         return comparabile
 
