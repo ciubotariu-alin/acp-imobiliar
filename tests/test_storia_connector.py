@@ -636,3 +636,57 @@ def test_search_aplică_wait_for_cu_timeout_de_30s(monkeypatch):
         connector.search(criterii_test())
 
     assert exc_info.value.connector == "storia.ro"
+
+
+# ---------- parseaza_detaliu_storia (atribute din __NEXT_DATA__) ----------
+
+def _storia_detail_html(attrs_json: str, body: str = "") -> str:
+    return (
+        "<html><body>" + body +
+        '<script id="__NEXT_DATA__" type="application/json">'
+        '{"props":{"pageProps":{"ad":{"attributes":' + attrs_json + "}}}}"
+        "</script></body></html>"
+    )
+
+
+def test_parseaza_detaliu_storia_extrage_atribute_cladire():
+    from acp.connectors.storia import parseaza_detaliu_storia
+    html = _storia_detail_html(
+        '{"build_year":"1968","building_material":"concrete",'
+        '"building_floors_num":"10","construction_status":"to_renovation"}',
+        body="<p>Apartament mobilat, aer conditionat, balcon.</p>",
+    )
+    d = parseaza_detaliu_storia(html)
+    assert d["an"] == 1968
+    assert d["structura"] == "beton"
+    assert d["etaje_total"] == 10
+    assert d["stare"] == "necesita_renovare"
+    # dotările vin din text (fără bias): rămân prezente
+    assert "mobilat" in d["dotari"]
+    assert "balcon" in d["dotari"]
+
+
+def test_parseaza_detaliu_storia_ignora_anunturile_decoy_ale_agentului():
+    from acp.connectors.storia import parseaza_detaliu_storia
+    html = (
+        '<html><body><script id="__NEXT_DATA__" type="application/json">'
+        '{"props":{"pageProps":{'
+        '"ad":{"attributes":{"build_year":"1968"}},'
+        '"unifiedAd":{"ownerAccount":{"ads":{"ads":['
+        '{"attributes":{"build_year":"2026"}}]}}}}}}'
+        "</script></body></html>"
+    )
+    d = parseaza_detaliu_storia(html)
+    assert d["an"] == 1968  # anunțul curent, nu 2026 din decoy
+
+
+def test_parseaza_detaliu_storia_fara_next_data_nu_crapa():
+    from acp.connectors.storia import parseaza_detaliu_storia
+    d = parseaza_detaliu_storia("<html><body>fără json</body></html>")
+    assert "an" not in d  # niciun an, dar întoarce dict valid
+
+
+def test_parseaza_detaliu_storia_material_necunoscut_omite_structura():
+    from acp.connectors.storia import parseaza_detaliu_storia
+    d = parseaza_detaliu_storia(_storia_detail_html('{"building_material":"other_material"}'))
+    assert "structura" not in d or d["structura"] is None

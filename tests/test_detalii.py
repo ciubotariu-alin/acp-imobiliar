@@ -82,3 +82,30 @@ def test_parseaza_detaliu_camp_necunoscut_none():
     assert d["stare"] is None
     assert d["dotari"] == []
     assert d["etaje_total"] is None
+
+
+def test_imbogateste_foloseste_parser_custom_per_sursa():
+    """parsers[sursa] înlocuiește parserul generic pentru acea sursă (ex. storia,
+    care parsează HTML/__NEXT_DATA__ în loc de text)."""
+    c = Comparabila(sursa="storia.ro", pret_eur=90000.0, supr_totala=60.0,
+                    url="https://storia.ro/x")
+    fetchers = {"storia.ro": lambda url: ("<html>brut</html>", ["https://storia.ro/p1.jpg"])}
+    parsers = {"storia.ro": lambda html: {"an": 1968, "structura": "beton", "dotari": ["mobilat"]}}
+    n = imbogateste_detalii([c], fetchers, parsers=parsers)
+    assert n == 1
+    assert c.an == 1968
+    assert c.structura == "beton"
+    assert "mobilat" in c.dotari
+    assert c.poze_urls == ["https://storia.ro/p1.jpg"]
+    assert c.detalii_complete is True
+
+
+def test_imbogateste_fara_parser_custom_foloseste_generic():
+    """Fără parsers, sursa folosește parserul generic pe text (comportament neschimbat)."""
+    c = Comparabila(sursa="imobiliare.ro", pret_eur=90000.0, supr_totala=60.0,
+                    url="https://imobiliare.ro/x", an=2015)
+    fetchers = {"imobiliare.ro": lambda url: ("structură beton, mobilat", [])}
+    n = imbogateste_detalii([c], fetchers)  # fără parsers
+    assert n == 1
+    assert c.structura == "beton"
+    assert "mobilat" in c.dotari

@@ -231,9 +231,14 @@ class PipelineOrchestrator:
                 for c in self.connectors
                 if hasattr(c, "fetch_detaliu")
             }
+            # storia.ro întoarce HTML brut + parser custom (atribute clădire din
+            # __NEXT_DATA__: an construcție, material, etaje, stare). Ceilalți conectori
+            # folosesc parserul generic pe text.
+            from acp.connectors.storia import parseaza_detaliu_storia
+            parsers = {"storia.ro": parseaza_detaliu_storia}
             if cache is None:
                 cache = CacheDetalii()
-            n = imbogateste_detalii(survivors, fetchers, cache)
+            n = imbogateste_detalii(survivors, fetchers, cache, parsers=parsers)
             logger.info(f"Imbogatite {n}/{len(survivors)} comparabile cu detalii de pe pagina de detaliu")
 
         if dedup_poze:
