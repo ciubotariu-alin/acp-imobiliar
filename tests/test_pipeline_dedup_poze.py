@@ -9,11 +9,13 @@ def _comp(sursa, url, pret, supr, etaj=2, camere=2):
 
 def test_dedup_poze_elimina_subiect_si_duplicat(monkeypatch):
     orch = PipelineOrchestrator()
+    # domeniu non-imobiliare: testul verifică ramura pe poze (fetch + hash)
+    # (imobiliare.ro nu mai declanseaza fetch — vezi test_pipeline_imobiliare_subiect.py)
     subiect = Subiect(pret_eur=108000, supr_totala=59, camere=2, etaj=2, an=1980,
-                      url="https://imobiliare.ro/subiect")
+                      url="https://storia.ro/subiect")
 
     # subiectul (propriul anunț) + geamănul lui la altă agenție + un anunț normal
-    prop = _comp("imobiliare.ro", "https://imobiliare.ro/subiect", 108000, 59)
+    prop = _comp("storia.ro", "https://storia.ro/subiect", 108000, 59)
     geaman = _comp("storia.ro", "https://storia.ro/geaman", 108000, 60)
     normal = _comp("olx.ro", "https://olx.ro/normal", 95000, 58)
     comparabile = [prop, geaman, normal]
@@ -35,7 +37,7 @@ def test_dedup_poze_elimina_subiect_si_duplicat(monkeypatch):
     monkeypatch.setattr("acp.core.pipeline.hashuri_din_urls", _fake_hashuri_din_urls)
 
     hash_map = {
-        "https://imobiliare.ro/subiect": [111],
+        "https://storia.ro/subiect": [111],
         "https://storia.ro/geaman": [111],
         "https://olx.ro/normal": [999999],
     }
@@ -53,9 +55,9 @@ def test_dedup_poze_elimina_subiect_si_duplicat(monkeypatch):
     )
 
     urls_ramase = {c.url for c in analiza.comparabile} | {c.url for c in analiza.outlieri}
-    assert "https://imobiliare.ro/subiect" not in urls_ramase  # subiect exclus
-    assert "https://storia.ro/geaman" not in urls_ramase        # duplicat/subiect exclus
-    assert "https://olx.ro/normal" in urls_ramase               # normalul rămâne
+    assert "https://storia.ro/subiect" not in urls_ramase  # subiect exclus
+    assert "https://storia.ro/geaman" not in urls_ramase   # duplicat/subiect exclus
+    assert "https://olx.ro/normal" in urls_ramase          # normalul rămâne
 
 
 def test_dedup_poze_url_esuat_nu_exclude_agresiv(monkeypatch):
