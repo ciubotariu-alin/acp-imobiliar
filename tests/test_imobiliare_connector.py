@@ -340,123 +340,6 @@ def test_fetch_html_with_retry_ridică_connector_error_după_max_retries(monkeyp
     assert calls["n"] == connector.max_retries  # exact max_retries încercări, nu mai mult
 
 
-class _FakeResponse:
-    def __init__(self, status: int):
-        self.status = status
-
-
-class _FakePage:
-    def __init__(self, status: int, content: str):
-        self._status = status
-        self._content = content
-
-    async def goto(self, url, timeout=None, wait_until=None):
-        return _FakeResponse(self._status)
-
-    async def content(self):
-        return self._content
-
-
-class _FakeContext:
-    def __init__(self, status: int, content: str):
-        self._status = status
-        self._content = content
-
-    async def new_page(self):
-        return _FakePage(self._status, self._content)
-
-
-class _FakeBrowser:
-    def __init__(self, status: int, content: str):
-        self._status = status
-        self._content = content
-        self.closed = False
-
-    async def new_context(self, **kwargs):
-        return _FakeContext(self._status, self._content)
-
-    async def close(self):
-        self.closed = True
-
-
-class _FakeChromium:
-    def __init__(self, status: int, content: str):
-        self._status = status
-        self._content = content
-
-    async def launch(self, headless=True):
-        return _FakeBrowser(self._status, self._content)
-
-
-class _FakePlaywrightManager:
-    def __init__(self, status: int, content: str):
-        self.chromium = _FakeChromium(status, content)
-
-
-class _FakePlaywrightContextManager:
-    def __init__(self, status: int, content: str):
-        self._status = status
-        self._content = content
-
-    async def __aenter__(self):
-        return _FakePlaywrightManager(self._status, self._content)
-
-    async def __aexit__(self, *exc_info):
-        return False
-
-
-def _fake_async_playwright(status: int, content: str = "<html>ok</html>"):
-    """Construiește un înlocuitor pentru `async_playwright()` care simulează
-    un răspuns Playwright cu un cod de status HTTP dat, fără browser real."""
-
-    def factory():
-        return _FakePlaywrightContextManager(status, content)
-
-    return factory
-
-
-def test_fetch_html_403_ridică_connector_error_nu_transient(monkeypatch):
-    """Status 403 (blocare anti-bot fermă) trebuie să ridice ConnectorError
-    direct — NU ImobiliareTransientError — pentru că nu are rost să reîncerci
-    imediat un 403 (retry-ul din _fetch_html_with_retry nu trebuie să-l prindă)."""
-    connector = ImobiliareConnector(min_delay_seconds=0)
-    monkeypatch.setattr(
-        "acp.connectors.imobiliare.async_playwright", _fake_async_playwright(403)
-    )
-
-    with pytest.raises(ConnectorError) as exc_info:
-        asyncio.run(connector._fetch_html("https://www.imobiliare.ro/x"))
-
-    assert not isinstance(exc_info.value, ImobiliareTransientError)
-
-
-def test_fetch_html_5xx_ridică_imobiliare_transient_error(monkeypatch):
-    """Status 5xx (eroare server, probabil tranzitorie) trebuie să ridice
-    ImobiliareTransientError — reîncercabilă de _fetch_html_with_retry —
-    nu un ConnectorError definitiv."""
-    connector = ImobiliareConnector(min_delay_seconds=0)
-    monkeypatch.setattr(
-        "acp.connectors.imobiliare.async_playwright", _fake_async_playwright(503)
-    )
-
-    with pytest.raises(ImobiliareTransientError):
-        asyncio.run(connector._fetch_html("https://www.imobiliare.ro/x"))
-
-
-def test_fetch_html_status_200_întoarce_conținutul_paginii(monkeypatch):
-    """Cazul fericit: status 200 -> _fetch_html întoarce HTML-ul paginii,
-    fără nicio excepție (verifică lanțul fals Playwright end-to-end)."""
-    connector = ImobiliareConnector(min_delay_seconds=0)
-    monkeypatch.setattr(
-        "acp.connectors.imobiliare.async_playwright",
-        _fake_async_playwright(200, content="<html>rezultate</html>"),
-    )
-
-    result = asyncio.run(connector._fetch_html("https://www.imobiliare.ro/x"))
-
-    assert result == "<html>rezultate</html>"
-
-
 # ---------- Constrângere timeout ≤30s per portal (search()) ----------
 
 
@@ -503,3 +386,28 @@ def test_search_aplică_wait_for_cu_timeout_de_30s(monkeypatch):
         connector.search(criterii_test())
 
     assert exc_info.value.connector == "imobiliare.ro"
+
+
+# ---------- Chrome real (Task 2) ----------
+
+
+def test_search_ridica_connector_error_daca_chrome_indisponibil(monkeypatch):
+    """Fără Google Chrome real, search ridică ConnectorError (orchestratorul continuă)."""
+    from acp.connectors import real_chrome
+    monkeypatch.setattr(real_chrome, "chrome_disponibil", lambda: False)
+    connector = ImobiliareConnector(min_delay_seconds=0)
+    crit = CriteriiCautare(camere=2, supr_min=40, supr_max=80, zona="colentina")
+    with pytest.raises(ConnectorError):
+        connector.search(crit)
+
+
+def test_fetch_html_mapeaza_esecul_real_chrome_la_connector_error(monkeypatch):
+    """Dacă real_chrome eșuează (challenge nerezolvat), _fetch_html ridică ConnectorError."""
+    from acp.connectors import real_chrome
+
+    async def _boom(url, user_agent, **kw):
+        raise RuntimeError("Cloudflare challenge nerezolvat")
+    monkeypatch.setattr(real_chrome, "fetch_html_async", _boom)
+    connector = ImobiliareConnector(min_delay_seconds=0)
+    with pytest.raises(ConnectorError):
+        asyncio.run(connector._fetch_html("https://www.imobiliare.ro/x"))
