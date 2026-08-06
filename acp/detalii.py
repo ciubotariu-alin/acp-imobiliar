@@ -28,6 +28,7 @@ def imbogateste_detalii(
     comparabile: list[Comparabila],
     fetchers: dict[str, Callable[[str], tuple[str | None, list[str]]]],
     cache=None,
+    parsers: dict[str, Callable[[str], dict]] | None = None,
 ) -> int:
     """Îmbogățește comparabilele cu date + URL-uri de poze din pagina de detaliu.
 
@@ -35,8 +36,13 @@ def imbogateste_detalii(
     - încearcă cache-ul; la miss apelează fetcher-ul `(text, poze_urls)` și parsează;
     - populează câmpurile (inclusiv `poze_urls`) și setează `detalii_complete=True`.
     Fetch eșuat (text None) sau sursă fără fetcher → sărită (detalii_complete rămâne False).
+
+    `parsers` (opțional): parser custom per sursă, `Callable[[str], dict]`, folosit în
+    locul lui `parseaza_detaliu` generic. Ex: storia.ro întoarce HTML brut și un parser
+    care citește atributele de clădire din `__NEXT_DATA__` (an construcție etc.).
     Întoarce numărul de comparabile îmbogățite.
     """
+    parsers = parsers or {}
     n = 0
     for c in comparabile:
         if not c.url or c.sursa not in fetchers:
@@ -46,7 +52,8 @@ def imbogateste_detalii(
             text, poze_urls = fetchers[c.sursa](c.url)
             if not text:
                 continue
-            campuri = parseaza_detaliu(text, c.an)
+            parser = parsers.get(c.sursa)
+            campuri = parser(text) if parser else parseaza_detaliu(text, c.an)
             campuri["poze_urls"] = poze_urls
             if cache is not None:
                 cache.set(c.url, campuri)

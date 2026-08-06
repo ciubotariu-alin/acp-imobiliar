@@ -408,9 +408,97 @@ class StoriaConnector(ConnectorBase):
         return f"{self.base_url}/ro/oferta/{slug}"
 
     def fetch_detaliu(self, url: str) -> tuple[str | None, list[str]]:
-        from acp.connectors import detaliu_fetch
-        return detaliu_fetch.fetch_detaliu(url, USER_AGENT)
+        """Întoarce (HTML brut, poze_urls). Spre deosebire de ceilalți conectori,
+        storia întoarce HTML-ul complet (nu doar textul), pentru că atributele de
+        clădire (an construcție, material, etaje, stare) sunt în ``__NEXT_DATA__`` —
+        vezi `parseaza_detaliu_storia`, folosit ca parser custom în îmbogățire."""
+        try:
+            return asyncio.run(self._fetch_detaliu_async(url))
+        except Exception:
+            return None, []
+
+    async def _fetch_detaliu_async(self, url: str) -> tuple[str, list[str]]:
+        from acp.connectors.detaliu_fetch import extrage_poze_din_srcs
+        await self._respect_rate_limit()
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                try:
+                    context = await browser.new_context(user_agent=USER_AGENT, locale="ro-RO")
+                    page = await context.new_page()
+                    await page.goto(url, timeout=self.timeout_ms, wait_until="domcontentloaded")
+                    await page.wait_for_timeout(3000)
+                    html = await page.content()
+                    srcs = await page.eval_on_selector_all(
+                        "img",
+                        "els => els.map(e => e.currentSrc || e.src || e.getAttribute('data-src') || '')",
+                    )
+                    return html, extrage_poze_din_srcs(srcs)
+                finally:
+                    await browser.close()
+        finally:
+            self._last_request_monotonic = time.monotonic()
 
     def fetch_detaliu_text(self, url: str) -> str | None:
         from acp.connectors import detaliu_fetch
         return detaliu_fetch.fetch_detaliu_text(url, USER_AGENT)
+
+
+# ---------- parser de detaliu storia (atribute structurate din __NEXT_DATA__) ----------
+
+# Mapare enum storia.ro -> vocabularul intern (acp/modele Comparabila).
+_MATERIAL_STORIA = {
+    "brick": "caramida", "concrete": "beton",
+    "cellular_concrete": "bca", "reinforced_concrete": "beton",
+}
+_STARE_STORIA = {
+    "ready_to_use": "bun", "to_renovation": "necesita_renovare",
+    "to_finishing": "gri", "after_renovation": "renovat",
+}
+
+
+def _extrage_atribute_storia(html: str) -> dict:
+    """Întoarce ``props.pageProps.ad.attributes`` din ``__NEXT_DATA__`` (dict), sau {}.
+
+    ATENȚIE: strict ``ad.attributes`` (anunțul curent) — NU
+    ``ownerAccount.ads.ads[].attributes``, care sunt ALTE anunțuri ale aceluiași
+    agent (ani de construcție diferiți = momeli).
+    """
+    try:
+        tag = BeautifulSoup(html, "html.parser").find("script", id="__NEXT_DATA__")
+        attrs = json.loads(tag.string)["props"]["pageProps"]["ad"]["attributes"]
+        return attrs if isinstance(attrs, dict) else {}
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return {}
+
+
+def parseaza_detaliu_storia(html: str) -> dict:
+    """Parser de detaliu storia: text vizibil pentru dotări/încălzire/parcare +
+    atribute structurate din ``__NEXT_DATA__`` (an construcție, material, etaje, stare).
+
+    Dotările vin din text (ca la ceilalți conectori — evită bias-ul de dotări), iar
+    câmpurile de clădire vin din JSON structurat (mult mai fiabil decât regex pe text).
+    """
+    from acp.detalii import parseaza_detaliu
+
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style"]):
+        tag.decompose()
+    text = soup.get_text(" ", strip=True)
+    campuri = parseaza_detaliu(text, None)
+
+    attrs = _extrage_atribute_storia(html)
+    build_year = attrs.get("build_year")
+    if build_year and str(build_year).isdigit():
+        campuri["an"] = int(build_year)
+    material = _MATERIAL_STORIA.get(attrs.get("building_material"))
+    if material:
+        campuri["structura"] = material
+    etaje = attrs.get("building_floors_num")
+    if etaje and str(etaje).isdigit():
+        campuri["etaje_total"] = int(etaje)
+    stare = _STARE_STORIA.get(attrs.get("construction_status"))
+    if stare:
+        campuri["stare"] = stare
+        campuri["stare_incredere"] = max(campuri.get("stare_incredere", 0.0), 0.8)
+    return campuri
