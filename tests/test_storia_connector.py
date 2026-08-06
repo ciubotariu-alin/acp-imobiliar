@@ -316,10 +316,11 @@ def test_storia_search_gol_dacă_niciun_anunț_nu_se_potrivește(storia_html, mo
     assert result == []
 
 
-def test_storia_search_zona_necunoscuta_fara_fallback(storia_html, monkeypatch):
-    """Dacă URL-ul cu zonă întoarce 0 anunțuri, search NU mai reîncearcă pe tot
-    orașul — un fallback city-wide ar aduce comparabile din alte zone (ex.
-    Iuliu Maniu în loc de Colentina), poluând mediana. Întoarce listă goală."""
+def test_storia_search_cartier_necunoscut_proba_sector_fara_leak(storia_html, monkeypatch):
+    """Cartier care nu există sub niciun sector: flat 404 → probăm cele 6 sectoare
+    (bucuresti/sectorul-N/cartier), toate goale → listă goală. Invariantul critic:
+    NICIODATĂ nu cădem pe tot orașul (bare .../bucuresti) — asta ar reintroduce
+    zone-leak-ul (ex. Iuliu Maniu în loc de cartierul cerut)."""
     connector = StoriaConnector()
     calls = []
 
@@ -332,9 +333,37 @@ def test_storia_search_zona_necunoscuta_fara_fallback(storia_html, monkeypatch):
     criterii = criterii_test(camere=2, supr_min=60, supr_max=80, zona="Viștei")
     result = connector.search(criterii)
 
-    assert len(calls) == 1  # doar căutarea cu zonă; fără fallback city-wide
-    assert "vistei" in calls[0]
+    assert len(calls) == 7  # 1 flat + 6 probe de sector
+    assert calls[0].endswith("/apartament/bucuresti/vistei")  # flat, fără sector
+    # fiecare probă e nested sub sector ȘI conține cartierul; niciuna nu e city-wide
+    for c in calls[1:]:
+        assert "sectorul-" in c and c.endswith("/vistei")
+    assert all(not c.endswith("/apartament/bucuresti") for c in calls)  # zero city-wide
     assert result == []
+
+
+def test_storia_search_cartier_gaseste_pe_sector(storia_html, monkeypatch):
+    """Cartier valid nested sub sector: flat (bucuresti/colentina) dă 0, dar proba
+    găsește anunțuri pe bucuresti/sectorul-2/colentina și le întoarce."""
+    connector = StoriaConnector()
+    calls = []
+
+    async def fake_fetch(url):
+        calls.append(url)
+        if "sectorul-2/colentina" in url:
+            return storia_html
+        return "<html><body>404</body></html>"
+
+    monkeypatch.setattr(connector, "_fetch_html_with_retry", fake_fetch)
+
+    criterii = criterii_test(camere=2, supr_min=60, supr_max=80, zona="Colentina")
+    result = connector.search(criterii)
+
+    assert len(result) > 0                       # anunțuri recuperate din sector
+    assert any("sectorul-2/colentina" in c for c in calls)
+    assert calls[0].endswith("/apartament/bucuresti/colentina")  # flat încercat întâi
+    for comp in result:
+        assert 60 <= comp.supr_totala <= 80 and comp.sursa == "storia.ro"
 
 
 def test_storia_search_fara_zona_nu_face_fallback(storia_html, monkeypatch):

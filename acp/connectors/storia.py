@@ -55,6 +55,14 @@ MIN_DELAY_SECONDS = 2.0
 MAX_RETRIES = 3
 SEARCH_TIMEOUT_SECONDS = 30
 
+# București are 6 sectoare. Cartierele sunt nested sub sector în taxonomia
+# storia.ro (bucuresti/sectorul-N/cartier); probăm sectoarele pe rând când
+# slug-ul flat de cartier dă 404. Vezi proba de sector din `_search_async`.
+SECTOARE_BUCURESTI = (
+    "sectorul-1", "sectorul-2", "sectorul-3",
+    "sectorul-4", "sectorul-5", "sectorul-6",
+)
+
 # Mapare enum textual storia.ro -> etaj numeric. GROUND (parter) = 0, la fel
 # ca la imobiliare.ro (vezi nota din modul). ABOVE_TENTH nu are un număr
 # exact expus, deci nu poate fi mapat (None = necunoscut).
@@ -144,15 +152,26 @@ class StoriaConnector(ConnectorBase):
     # ---------- orchestrare async ----------
 
     async def _search_async(self, criterii: CriteriiCautare) -> list[Comparabila]:
-        """Construiește URL-ul, navighează (cu retry, cu fallback de zonă) și parsează."""
+        """Construiește URL-ul, navighează (cu retry + probă de sector) și parsează."""
+        zona_slug = self._slugify(criterii.zona)
         url = self._build_search_url(criterii)
         html = await self._fetch_html_with_retry(url)
         items = self._extract_listing_items(html)
 
-        # Fără fallback city-wide: dacă slug-ul de zonă nu e recunoscut de
-        # taxonomia storia.ro și întoarce 0 anunțuri, NU căutăm pe tot orașul —
-        # ar aduce comparabile din alte zone (ex. Iuliu Maniu în loc de
-        # Colentina), poluând mediana. Preferăm 0 comparabile din altă zonă.
+        # Probă de sector (NU fallback city-wide): în taxonomia storia.ro cartierele
+        # bucureștene sunt nested sub sector (bucuresti/sectorul-N/cartier); slug-ul
+        # flat (bucuresti/cartier) dă 404 → 0 anunțuri. Dacă flat n-a găsit nimic ȘI
+        # zona e un cartier (nu deja un sector), probăm cele 6 sectoare și luăm primul
+        # care întoarce anunțuri PENTRU ACEL CARTIER. Nu cădem niciodată pe tot orașul
+        # (ar reintroduce zone-leak-ul — ex. Iuliu Maniu în loc de Colentina).
+        if not items and zona_slug and not zona_slug.startswith("sector"):
+            for sector in SECTOARE_BUCURESTI:
+                html_s = await self._fetch_html_with_retry(
+                    self._build_search_url(criterii, sector=sector)
+                )
+                items = self._extract_listing_items(html_s)
+                if items:
+                    break
 
         comparabile: list[Comparabila] = []
         for item in items:
@@ -229,10 +248,16 @@ class StoriaConnector(ConnectorBase):
 
     # ---------- construcție URL ----------
 
-    def _build_search_url(self, criterii: CriteriiCautare, include_zona: bool = True) -> str:
+    def _build_search_url(self, criterii: CriteriiCautare, include_zona: bool = True,
+                          sector: str | None = None) -> str:
         """
         Construiește URL de căutare pe structura de path a storia.ro:
-        /ro/rezultate/{vanzare|inchiriere}/apartament/bucuresti[/{zona-slug}]
+        /ro/rezultate/{vanzare|inchiriere}/apartament/bucuresti[/{sector}][/{zona-slug}]
+
+        În taxonomia storia.ro cartierele bucureștene sunt nested sub sector
+        (``bucuresti/sectorul-2/colentina``); slug-ul flat ``bucuresti/colentina``
+        dă 404. Parametrul opțional `sector` inserează segmentul de sector înaintea
+        cartierului, folosit de proba de sector din `_search_async`.
 
         Notă: nu am găsit un parametru de query fiabil pentru filtrul de
         număr de camere (parametrii încercați empiric — ``roomsNumber``,
@@ -248,6 +273,8 @@ class StoriaConnector(ConnectorBase):
         if include_zona:
             zona_slug = self._slugify(criterii.zona)
             if zona_slug:
+                if sector:
+                    segments.append(sector)
                 segments.append(zona_slug)
 
         return self.base_url + "/" + "/".join(segments)
