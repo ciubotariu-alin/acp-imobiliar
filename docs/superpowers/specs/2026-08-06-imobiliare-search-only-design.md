@@ -16,15 +16,13 @@ Concluzie: singura cale sustenabilă e **volum minim (1 încărcare de search) +
 ## Ce păstrăm / ce pierdem
 
 **Păstrăm:**
-- imobiliare ca sursă de comparabile: preț, suprafață, etaj, **an** (25/26 din `data-year`), plus stare/structură/încălzire/parcare din textul cardului → **ajustările numerice** (etaj/vechime/mărime) merg complet.
-- **Excluderea subiectului** — două plase, ambele fără fetch:
-  - **URL/ID-match**: comparabila cu același ID de anunț ca `subiect.url` → propriul anunț.
-  - **Metadata**: `potrivire_metadata_subiect` → geamănul de la altă agenție. Validat: prinde exact subiect+geamăn, **zero fals-pozitive**.
+- imobiliare ca sursă de comparabile cu **ajustare pe datele din card**: etaj/vechime/mărime (din etaj/an/suprafață — `an` prezent la 25/26 din `data-year`) **și** stare/structură/încălzire/parcare (din textul cardului, populate deja de `_normalize_listing_to_comparabila`). Ajustarea se face — doar pe ce știm din search, nu din detaliu.
+- **Excluderea subiectului** — pe **metadata**, fără fetch: `potrivire_metadata_subiect` (etaj+camere+±2mp+±1% preț) prinde atât **propriul anunț** (se potrivește exact cu subiectul) cât și **geamănul** de la altă agenție. Validat: a scos fix subiect+geamăn, zero fals-pozitive.
 
 **Pierdem conștient:**
-- Ajustările de **dotări** pentru comparabilele imobiliare (mobilat/AC/boxă din detaliu) — dar **nebiasat** (garda `detalii_complete=False` nu aplică ajustări de dotări pe comparabile ne-îmbogățite).
+- Ajustările de **dotări din pagina de detaliu** (mobilat/AC/balcon/boxă) pentru comparabilele imobiliare — dar **nebiasat** (garda `detalii_complete=False` nu aplică ajustări de dotări pe comparabile ne-îmbogățite). Restul ajustărilor (numerice + stare/structură/încălzire/parcare din card) se aplică normal.
 - **Dedup pe poze pentru imobiliare** — duplicatele cross-agenție/cross-portal ale unor apartamente *care nu-s subiectul* nu se prind (rar). Subiectul + geamănul rămân excluse (URL + metadata).
-- **Risc rezidual (mic):** excluderea pe metadata (fără confirmare pe poze) ar putea, teoretic, scoate un apartament *genuin diferit* care se potrivește exact pe etaj+camere+±2mp+±1% preț cu subiectul. Validat gol în cazul de test (Colentina: a scos fix subiect+geamăn), dar riscul există când mai multe apartamente aproape-identice ca preț/suprafață/etaj coexistă în zonă. URL-match nu are acest risc (e identitate de anunț).
+- **Risc rezidual (mic):** excluderea pe metadata (fără confirmare pe poze) ar putea, teoretic, scoate un apartament *genuin diferit* care se potrivește exact pe etaj+camere+±2mp+±1% preț cu subiectul. Validat gol în cazul de test (Colentina: a scos fix subiect+geamăn), dar riscul există când mai multe apartamente aproape-identice ca preț/suprafață/etaj coexistă în zonă. Acceptat conștient (pierdem eventual 1 comparabilă genuină în schimbul excluderii sigure a auto-comparației).
 
 ## Constrângeri (Global Constraints)
 
@@ -84,24 +82,9 @@ async def _fetch_html(self, url: str) -> str:
 
 **Elimină îmbogățirea imobiliare:** se scot metodele `fetch_detaliu` și `fetch_detaliu_text` de pe `ImobiliareConnector`. Astfel filtrul `hasattr(c, "fetch_detaliu")` din pipeline exclude automat imobiliare din îmbogățire; comparabilele imobiliare rămân `detalii_complete=False` și `poze_urls=[]`.
 
-### 3. `acp/dedup_poze.py` — excludere subiect prin URL/ID-match
+### 3. `acp/core/pipeline.py` — mod de excludere subiect
 
-`confirma_si_dedup` primește deja `subiect`. Adăugăm o pre-verificare de identitate în Pasul 1 (excludere subiect), înaintea căilor pe poze/metadata:
-
-```python
-def _id_anunt(url: str | None) -> str | None:
-    """Cel mai lung șir de ≥6 cifre din URL (ID-ul anunțului). None dacă lipsește."""
-    if not url:
-        return None
-    m = re.findall(r"\d{6,}", url)
-    return max(m, key=len) if m else None
-```
-
-În Pasul 1, pentru fiecare comparabilă `c`:
-- dacă `subiect.url` și `_id_anunt(c.url) == _id_anunt(subiect.url)` (ambele non-None) → `subiect_eliminate` (propriul anunț, indiferent de poze).
-- altfel logica existentă (potrivire_metadata_subiect → poze dacă `subiect_hashes`, altfel fallback metadata dacă permis).
-
-### 4. `acp/core/pipeline.py` — mod de excludere subiect
+Motorul `confirma_si_dedup` rămâne neschimbat (fără url-match). Excluderea subiectului pentru imobiliare se face exclusiv pe **metadata**, activată prin `fallback_metadata_subiect=True` (vezi mai jos). Metadata prinde atât propriul anunț (potrivire exactă) cât și geamănul.
 
 Pipeline-ul decide cum se exclude subiectul, în funcție de sursa lui:
 
@@ -109,7 +92,7 @@ Pipeline-ul decide cum se exclude subiectul, în funcție de sursa lui:
 subiect_hashes = []
 fallback_metadata = False
 if subiect.url and _este_imobiliare(subiect.url):
-    # subiect search-only (imobiliare): fără poze; excludere pe URL-match + metadata
+    # subiect search-only (imobiliare): fără poze; excludere pe metadata
     fallback_metadata = True
 elif subiect.url:
     # olx/storia: fetch poze subiect
@@ -134,7 +117,7 @@ fetch imobiliare (1 încărcare, Chrome real headed, profil efemer) → carduri 
   + olx/storia/romimo (invizibil, httpx/Chromium headless)
       → filtreaza (dedup + supr/an)
       → îmbogățire survivors OLX/STORIA (imobiliare exclus automat: fără fetch_detaliu)
-      → dedup subiect: URL/ID-match (propriu) + metadata (geamăn), fără fetch pentru imobiliare
+      → dedup subiect: metadata (propriu + geamăn), fără fetch pentru imobiliare
         · dedup pe poze rămâne pentru olx/storia
       → analizeaza (set curat)
 ```
@@ -142,11 +125,10 @@ fetch imobiliare (1 încărcare, Chrome real headed, profil efemer) → carduri 
 ## Testare
 
 - **Unit `real_chrome`:** `chrome_disponibil()` întoarce bool fără să arunce; `fetch_html` — partea de decizie de challenge e greu de testat fără browser real, deci se testează manual/integrare (vezi Live). Se poate testa un helper pur de detecție „title conține 'moment'" dacă e extras.
-- **Unit `_id_anunt`:** extrage ID-ul din URL imobiliare/olx/storia; None fără cifre; alege cel mai lung șir la URL-uri cu mai multe numere.
-- **Unit `confirma_si_dedup` URL-match:** comparabilă cu același `_id_anunt` ca subiectul → `subiect_eliminate`, chiar fără poze și fără potrivire metadata; comparabilă cu alt id dar metadata-match (geamăn) → exclusă prin metadata când `fallback_metadata_subiect=True`; comparabilă normală → păstrată.
+- **Unit `confirma_si_dedup` metadata:** cu `subiect_hashes=[]` și `fallback_metadata_subiect=True`, o comparabilă care se potrivește pe metadata cu subiectul (propriul anunț SAU geamănul) → `subiect_eliminate`; o comparabilă care nu se potrivește → păstrată. (Comportament deja acoperit de testele existente ale motorului — se verifică doar că rămâne valid.)
 - **Unit pipeline:** subiect imobiliare → `fallback_metadata=True`, NU se apelează `fetch_detaliu` pentru poze subiect; subiect olx cu fetch reușit → poze folosite; subiect fără url → `fallback_metadata=True`.
 - **Regresie:** testele de status-branching din `test_imobiliare_connector.py` care mock-uiau lanțul `chromium.launch(headless=True)` se actualizează/elimină (calea bundle e înlocuită); testele Task 4 pentru `imobiliare.fetch_detaliu` se elimină (metoda dispare); restul suitei rămâne verde.
-- **Live (manual, IP proaspăt):** rulare Colentina → imobiliare ~26 comps din 1 încărcare; subiect (275238880) exclus prin URL-match, geamăn (275736626) prin metadata; zero încărcări `/oferta/`; olx/storia/romimo contribuie normal.
+- **Live (manual, IP proaspăt):** rulare Colentina → imobiliare ~26 comps din 1 încărcare; subiect (275238880) și geamăn (275736626) excluși prin metadata; zero încărcări `/oferta/`; olx/storia/romimo contribuie normal.
 
 ## Non-scope (YAGNI)
 
