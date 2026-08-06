@@ -22,8 +22,6 @@ import unicodedata
 
 from bs4 import BeautifulSoup
 from bs4.element import Tag
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-from playwright.async_api import async_playwright
 from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from acp.connectors.base import ConnectorBase, ConnectorError
@@ -78,6 +76,12 @@ class ImobiliareConnector(ConnectorBase):
                 Orchestratorul (Task 7) prinde această excepție și continuă
                 cu celelalte surse.
         """
+        from acp.connectors import real_chrome
+        if not real_chrome.chrome_disponibil():
+            raise ConnectorError(
+                "imobiliare.ro: Google Chrome real indisponibil (channel='chrome')",
+                connector=self.name,
+            )
         try:
             return asyncio.run(
                 asyncio.wait_for(self._search_async(criterii), timeout=SEARCH_TIMEOUT_SECONDS)
@@ -129,35 +133,19 @@ class ImobiliareConnector(ConnectorBase):
         raise ConnectorError("imobiliare.ro: eroare necunoscută la fetch", connector=self.name)
 
     async def _fetch_html(self, url: str) -> str:
-        """O singură navigare Playwright, respectând rate limiting-ul politicos."""
+        """Încarcă pagina prin Google Chrome REAL (headed) — singurul care trece Cloudflare.
+
+        Chromium bundle (headless SAU headed) primește soft-block pe imobiliare.ro; doar
+        Chrome real vizibil ajunge la anunțuri. Profil efemer (în real_chrome), 1 încărcare.
+        """
+        from acp.connectors import real_chrome
         await self._respect_rate_limit()
         try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
-                try:
-                    context = await browser.new_context(user_agent=USER_AGENT, locale="ro-RO")
-                    page = await context.new_page()
-                    try:
-                        response = await page.goto(
-                            url, timeout=self.timeout_ms, wait_until="domcontentloaded"
-                        )
-                    except PlaywrightTimeoutError as e:
-                        raise ImobiliareTransientError(
-                            f"imobiliare.ro timeout la navigare: {url}", connector=self.name
-                        ) from e
-
-                    if response is not None and response.status == 403:
-                        raise ConnectorError(
-                            "imobiliare.ro a blocat requestul (403 anti-bot)", connector=self.name
-                        )
-                    if response is not None and response.status >= 500:
-                        raise ImobiliareTransientError(
-                            f"imobiliare.ro eroare server ({response.status})", connector=self.name
-                        )
-
-                    return await page.content()
-                finally:
-                    await browser.close()
+            return await real_chrome.fetch_html_async(url, USER_AGENT)
+        except Exception as e:
+            raise ConnectorError(
+                f"imobiliare.ro Chrome real: {e}", connector=self.name
+            ) from e
         finally:
             self._last_request_monotonic = time.monotonic()
 
@@ -307,11 +295,3 @@ class ImobiliareConnector(ConnectorBase):
         if not href:
             return None
         return href if href.startswith("http") else self.base_url + href
-
-    def fetch_detaliu(self, url: str) -> tuple[str | None, list[str]]:
-        from acp.connectors import detaliu_fetch
-        return detaliu_fetch.fetch_detaliu(url, USER_AGENT)
-
-    def fetch_detaliu_text(self, url: str) -> str | None:
-        from acp.connectors import detaliu_fetch
-        return detaliu_fetch.fetch_detaliu_text(url, USER_AGENT)

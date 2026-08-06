@@ -47,7 +47,7 @@ def test_fetch_detaliu_text_wrapper_intoarce_doar_text(monkeypatch):
 
 
 def test_connector_deleaga_fetch_detaliu_cu_user_agent_propriu(monkeypatch):
-    from acp.connectors.imobiliare import ImobiliareConnector, USER_AGENT
+    from acp.connectors.olx import OlxConnector, USER_AGENT
     apeluri = {}
 
     def _fake_fetch(url, user_agent, timeout_ms=30000, retries=1):
@@ -55,9 +55,9 @@ def test_connector_deleaga_fetch_detaliu_cu_user_agent_propriu(monkeypatch):
         apeluri["ua"] = user_agent
         return "ok", ["https://cdn.x.ro/foto-1.jpg"]
     monkeypatch.setattr(df, "fetch_detaliu", _fake_fetch)
-    conn = ImobiliareConnector()
-    text, poze = conn.fetch_detaliu("https://imobiliare.ro/y")
+    conn = OlxConnector()
+    text, poze = conn.fetch_detaliu("https://olx.ro/y")
     assert text == "ok"
     assert poze == ["https://cdn.x.ro/foto-1.jpg"]
-    assert apeluri["url"] == "https://imobiliare.ro/y"
+    assert apeluri["url"] == "https://olx.ro/y"
     assert apeluri["ua"] == USER_AGENT

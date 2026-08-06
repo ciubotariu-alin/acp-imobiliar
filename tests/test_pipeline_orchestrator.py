@@ -35,20 +35,23 @@ def test_deduplicate_and_analyze_imbogateste_aplica_dotari(orchestrator, subiect
     from acp.cache_detalii import CacheDetalii
 
     # subiectul are mobilat; comparabilele NU au detalii inițial
+    # sursa e olx.ro (nu imobiliare.ro): imobiliare.ro e search-only, fără
+    # fetch_detaliu — pipeline-ul îl sare automat la îmbogățire (hasattr check).
     subiect_test.dotari = ["mobilat"]
     comps = [
-        Comparabila(sursa="imobiliare.ro", pret_eur=95000.0, supr_totala=64.0,
-                    url="https://imobiliare.ro/a", an=2010, marcaj="activ"),
-        Comparabila(sursa="imobiliare.ro", pret_eur=99000.0, supr_totala=66.0,
-                    url="https://imobiliare.ro/b", an=2011, marcaj="activ"),
-        Comparabila(sursa="imobiliare.ro", pret_eur=90000.0, supr_totala=62.0,
-                    url="https://imobiliare.ro/c", an=2009, marcaj="activ"),
-        Comparabila(sursa="imobiliare.ro", pret_eur=102000.0, supr_totala=68.0,
-                    url="https://imobiliare.ro/d", an=2012, marcaj="activ"),
+        Comparabila(sursa="olx.ro", pret_eur=95000.0, supr_totala=64.0,
+                    url="https://olx.ro/a", an=2010, marcaj="activ"),
+        Comparabila(sursa="olx.ro", pret_eur=99000.0, supr_totala=66.0,
+                    url="https://olx.ro/b", an=2011, marcaj="activ"),
+        Comparabila(sursa="olx.ro", pret_eur=90000.0, supr_totala=62.0,
+                    url="https://olx.ro/c", an=2009, marcaj="activ"),
+        Comparabila(sursa="olx.ro", pret_eur=102000.0, supr_totala=68.0,
+                    url="https://olx.ro/d", an=2012, marcaj="activ"),
     ]
-    # toate conectorii orchestratorului primesc un fetch_detaliu_text care spune "fără dotări"
+    # toate conectorii orchestratorului primesc un fetch_detaliu care spune "fără dotări"
+    # (fetchers-ul din pipeline foloseste fetch_detaliu, nu fetch_detaliu_text)
     for conn in orchestrator.connectors:
-        conn.fetch_detaliu_text = lambda url: "apartament nefinisat, structură beton"
+        conn.fetch_detaliu = lambda url: ("apartament nefinisat, structură beton", [])
 
     cache = CacheDetalii(dir=str(tmp_path / "d"))
     analiza = orchestrator.deduplicate_and_analyze(
