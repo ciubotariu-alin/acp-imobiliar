@@ -60,8 +60,10 @@ def test_dedup_poze_elimina_subiect_si_duplicat(monkeypatch):
 
 def test_dedup_poze_url_esuat_nu_exclude_agresiv(monkeypatch):
     orch = PipelineOrchestrator()
+    # domeniu non-imobiliare: testul verifică ramura "url dat, fetch poze esuat"
+    # (imobiliare.ro nu mai declanseaza fetch — vezi test_pipeline_imobiliare_subiect.py)
     subiect = Subiect(pret_eur=108000, supr_totala=59, camere=2, etaj=2, an=1980,
-                      url="https://imobiliare.ro/subiect")
+                      url="https://storia.ro/subiect")
 
     # comparabila care se potriveste pe metadata cu subiectul
     potrivita = _comp("storia.ro", "https://storia.ro/potrivita", 108000, 60)

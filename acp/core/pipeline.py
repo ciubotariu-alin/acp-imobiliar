@@ -24,6 +24,11 @@ from acp.connectors.imobiliare import USER_AGENT as UA_DETALIU
 logger = logging.getLogger(__name__)
 
 
+def _este_imobiliare(url: str | None) -> bool:
+    """True dacă URL-ul e un anunț imobiliare.ro (sursă search-only, fără poze)."""
+    return bool(url) and "imobiliare.ro" in url
+
+
 class PipelineOrchestrator:
     """Coordonare conectori, filtrare, deduplicare, analiză."""
 
@@ -243,15 +248,21 @@ class PipelineOrchestrator:
 
         if dedup_poze:
             subiect_hashes: list[int] = []
-            if subiect.url:
+            if subiect.url and _este_imobiliare(subiect.url):
+                # Subiect search-only (imobiliare): NU descărcăm poze; excludere pe metadata.
+                fallback_metadata = True
+            elif subiect.url:
                 _, poze_subiect = detaliu_fetch.fetch_detaliu(subiect.url, UA_DETALIU)
                 subiect_hashes = hashuri_din_urls(poze_subiect, UA_DETALIU)
-            fallback_metadata = subiect.url is None
-            if subiect.url and not subiect_hashes:
-                logger.warning(
-                    "Subiect are url dar fetch-ul pozelor a esuat — sar excluderea "
-                    "subiectului (fara fallback pe metadata)"
-                )
+                # url dat dar fetch eșuat → NU excludem agresiv pe metadata (fix existent)
+                fallback_metadata = bool(subiect_hashes)
+                if not subiect_hashes:
+                    logger.warning(
+                        "Subiect are url dar fetch-ul pozelor a esuat — sar excluderea "
+                        "subiectului (fara fallback pe metadata)"
+                    )
+            else:
+                fallback_metadata = True  # date manuale, fără url
             fetch_poze = construieste_fetch_poze(UA_DETALIU, cache=CacheHashuri())
             pastrate, dup_elim, subj_elim = confirma_si_dedup(
                 survivors, subiect, subiect_hashes, fetch_poze,
